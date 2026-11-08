@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers 3D Alpha</title>
+    <title>Halo Divers Pseudo-3D Engine</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050a12; font-family: sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
         #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.6; }
     </style>
@@ -14,167 +14,205 @@
 <body>
 
     <div id="ui">
-        HALO DIVERS: 3D HARDWARE INTERFACE LIVE<br>
-        <span id="status" style="color: #00ffcc;">✅ 3D ENGINE INITIALIZED</span><br>
-        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Move Left Stick to maneuver. Press Right Bumper (RB) to fire!</span>
+        HALO DIVERS: INDESTRUCTIBLE 3D SYSTEM<br>
+        <span id="status" style="color: #ff3366;">⚠️ PRESS 'START/MENU' BUTTON AND CHOOSE 'USE GAME CONTROLS'</span><br>
+        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Move Left Stick to wander map. Hold RB to shoot!</span>
     </div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Load Three.js 3D Library Safely via CDN -->
-    <script src="https://cloudflare.com"></script>
-
     <script>
-        // ==========================================
-        // 1. 3D RENDER ENGINE SETUP
-        // ==========================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050a12);
-        scene.fog = new THREE.FogExp2(0x050a12, 0.015); // Add atmosphere fog
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // ==========================================
-        // 2. HARDWARE LIGHTING (Crucial for Xbox One S compatibility)
-        // ==========================================
-        const ambientLight = new THREE.AmbientLight(0x223344, 1.5); // Global soft tint
-        scene.add(ambientLight);
-
-        const sunLight = new THREE.DirectionalLight(0x00ffcc, 2.0); // Bright tactical overhead light
-        sunLight.position.set(10, 20, 10);
-        scene.add(sunLight);
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
         // ==========================================
-        // 3. 3D GAME WORLD OBJECTS
+        // 1. GAME DATA & MAP SETUP
         // ==========================================
-        // Grid Terrain floor
-        const gridHelper = new THREE.GridHelper(200, 100, 0x00ffcc, 0x1a2636);
-        gridHelper.position.y = 0;
-        scene.add(gridHelper);
-
-        // 3D Player Character (Representing an ODST Armor Block)
-        const playerGeo = new THREE.BoxGeometry(1.2, 2.0, 1.2);
-        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, roughness: 0.4, metalness: 0.2 });
-        const player = new THREE.Mesh(playerGeo, playerMat);
-        player.position.set(0, 1.0, 0); // Stand perfectly on ground level
-        scene.add(player);
-
-        // Third-Person Camera Offset Config
-        const cameraOffset = new THREE.Vector3(0, 5, 8); 
-
-        // Projectiles sandbox containers
+        const player = { x: 3.5, y: 3.5, angle: 0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
-        let lastMoveDir = new THREE.Vector3(0, 0, -1); // Default shooting forward vector
+
+        // Custom 10x10 Tactical Grid Arena Map (1 = Wall, 0 = Empty Corridor)
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,0,0,1],
+            [1,0,1,1,0,0,1,0,0,1],
+            [1,0,0,1,0,0,0,0,0,1],
+            [1,0,0,1,0,0,0,1,0,1],
+            [1,0,0,0,0,1,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
+        const MAP_SIZE = 10;
 
         // ==========================================
-        // 4. HARDWARE INPUT PROCESSOR
+        // 2. HARDWARE GAMEPAD ROUTER
         // ==========================================
-        function processHardwareControls() {
+        function processControls() {
             const gamepads = navigator.getGamepads();
             
             for (let i = 0; i < gamepads.length; i++) {
                 const pad = gamepads[i];
                 if (!pad) continue;
 
-                // --- MANEUVER LOOPS (LEFT STICK) ---
+                document.getElementById('status').innerText = "✅ CONTROL CHANNELS ENGAGED";
+                document.getElementById('status').style.color = "#00ffcc";
+
                 if (pad.axes && pad.axes.length >= 2) {
-                    const stickX = pad.axes[0] || 0;
-                    const stickY = pad.axes[1] || 0;
+                    const stickX = pad.axes[0] || 0; // Left Stick Left/Right
+                    const stickY = pad.axes[1] || 0; // Left Stick Up/Down
 
-                    if (Math.abs(stickX) > 0.15 || Math.abs(stickY) > 0.15) {
-                        // Apply movement directly along the 3D space axes (X and Z floor coordinates)
-                        player.position.x += stickX * 0.15;
-                        player.position.z += stickY * 0.15;
-
-                        // Calculate and store rotation vector orientation based on direction
-                        lastMoveDir.set(stickX, 0, stickY).normalize();
-                        
-                        // Rotate player mesh smoothly to face the heading direction
-                        const targetAngle = Math.atan2(stickX, stickY);
-                        player.rotation.y = targetAngle;
+                    // Left Stick Up/Down: Moves forward/backward along player facing angle
+                    if (Math.abs(stickY) > 0.15) {
+                        const nextX = player.x - Math.sin(player.angle) * stickY * player.speed;
+                        const nextY = player.y + Math.cos(player.angle) * stickY * player.speed;
+                        // Basic collision security check
+                        if (map[Math.floor(nextY)][Math.floor(nextX)] === 0) {
+                            player.x = nextX;
+                            player.y = nextY;
+                        }
                     }
+                    
+                    // Left Stick Left/Right: Rotates your point-of-view angle camera
+                    if (Math.abs(stickX) > 0.15) {
+                        player.angle += stickX * player.rotSpeed;
+                    }
+                    
+                    document.getElementById('debug').innerText = `Angle: ${(player.angle).toFixed(2)} | Pos: X(${player.x.toFixed(1)}) Y(${player.y.toFixed(1)})`;
                 }
 
-                // --- WEAPON TRIGGERS (RIGHT BUMPER) ---
+                // Combat Triggers (Right Bumper)
                 if (pad.buttons && pad.buttons.length > 5) {
-                    const rbButton = pad.buttons[5]; // Standard hardware mapping for RB
-                    if (rbButton && rbButton.pressed && canFire) {
-                        spawn3DProjectile();
+                    if (pad.buttons[5] && pad.buttons[5].pressed && canFire) {
+                        fireLaser();
                     }
                 }
             }
         }
 
         // ==========================================
-        // 5. 3D PROJECTILE WEAPON PHYSICS
+        // 3. WEAPON SANDBOX CORE
         // ==========================================
-        const boltGeo = new THREE.SphereGeometry(0.2, 8, 8);
-        const boltMat = new THREE.MeshBasicMaterial({ color: 0x3399ff }); // Glowing plasma blue bullet
-
-        function spawn3DProjectile() {
+        function fireLaser() {
             canFire = false;
-
-            const projectileMesh = new THREE.Mesh(boltGeo, boltMat);
-            // Spawn bullet right at weapon chest position
-            projectileMesh.position.copy(player.position);
-            projectileMesh.position.y += 0.5; 
-            scene.add(projectileMesh);
-
             projectiles.push({
-                mesh: projectileMesh,
-                velocity: lastMoveDir.clone().multiplyScalar(0.6), // Set velocity multiplier
-                life: 120 // Frame lifespan before automatic garbage cleanup
+                x: player.x,
+                y: player.y,
+                angle: player.angle,
+                speed: 0.15,
+                life: 60
             });
-
-            // Fire rate limiter (0.15 seconds gap)
-            setTimeout(() => { canFire = true; }, 150);
+            setTimeout(() => { canFire = true; }, 180);
         }
 
         function updateProjectiles() {
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
-                p.mesh.position.add(p.velocity);
+                p.x -= Math.sin(p.angle) * p.speed;
+                p.y += Math.cos(p.angle) * p.speed;
                 p.life--;
 
-                // Destroy bullet if it runs out of lifetime frames
-                if (p.life <= 0) {
-                    scene.remove(p.mesh);
-                    p.mesh.geometry.dispose();
-                    p.mesh.material.dispose();
+                // Destroy if hits wall or lifespan expires
+                if (map[Math.floor(p.y)][Math.floor(p.x)] === 1 || p.life <= 0) {
                     projectiles.splice(i, 1);
                 }
             }
         }
 
         // ==========================================
-        // 6. MAIN ENGINE RENDERING HEARTBEAT
+        // 4. THE 3D RAYCAST RENDERING MATRIX
+        // ==========================================
+        function render3DScene() {
+            const FOV = Math.PI / 3; // 60 degrees view field
+            const numRays = canvas.width;
+            const halfHeight = canvas.height / 2;
+
+            // Draw Sky (Upper half screen)
+            ctx.fillStyle = '#060e1a';
+            ctx.fillRect(0, 0, canvas.width, halfHeight);
+
+            // Draw Ground (Lower half screen)
+            ctx.fillStyle = '#101726';
+            ctx.fillRect(0, halfHeight, canvas.width, halfHeight);
+
+            // Cast a vertical light strip ray across every pixel column on screen
+            for (let i = 0; i < numRays; i++) {
+                const rayAngle = player.angle - (FOV / 2) + (FOV * i / numRays);
+                
+                let distance = 0;
+                let hitWall = false;
+                
+                const cos = -Math.sin(rayAngle);
+                const sin = Math.cos(rayAngle);
+
+                while (!hitWall && distance < 16) {
+                    distance += 0.05;
+                    const checkX = Math.floor(player.x + cos * distance);
+                    const checkY = Math.floor(player.y + sin * distance);
+
+                    if (checkX < 0 || checkX >= MAP_SIZE || checkY < 0 || checkY >= MAP_SIZE) {
+                        hitWall = true;
+                        distance = 16;
+                    } else if (map[checkY][checkX] === 1) {
+                        hitWall = true;
+                    }
+                }
+
+                // Fisheye correction math
+                const correctedDist = distance * Math.cos(rayAngle - player.angle);
+                
+                // Calculate size slice height based on distance
+                const wallHeight = Math.min(canvas.height, (canvas.height / correctedDist));
+
+                // Create wall illumination depth shading
+                const intensity = Math.max(0, 255 - (correctedDist * 16));
+                ctx.fillStyle = `rgb(0, ${intensity * 0.7}, ${intensity})`;
+
+                ctx.fillRect(i, halfHeight - wallHeight / 2, 1, wallHeight);
+            }
+
+            // Render Plasma Projectiles over the 3D space view
+            for (const p of projectiles) {
+                const dx = p.x - player.x;
+                const dy = p.y - player.y;
+                let pAngle = Math.atan2(dx, dy) - player.angle + Math.PI/2;
+                
+                // Keep angle normalization inside boundaries
+                while (pAngle < -Math.PI) pAngle += Math.PI * 2;
+                while (pAngle > Math.PI) pAngle -= Math.PI * 2;
+
+                if (Math.abs(pAngle) < FOV / 2) {
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const screenX = (canvas.width / 2) + (pAngle / (FOV / 2)) * (canvas.width / 2);
+                    const size = Math.max(2, (canvas.height / dist) * 0.1);
+                    
+                    ctx.fillStyle = '#ff3366'; // Glowing Crimson Charge
+                    ctx.beginPath();
+                    ctx.arc(screenX, halfHeight, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. MAIN ENGINE CORE LOOP
         // ==========================================
         function engineLoop() {
-            requestAnimationFrame(engineLoop);
-
-            // Execute input frame modifications and projectile steps
-            processHardwareControls();
+            processControls();
             updateProjectiles();
-
-            // Dynamic Over-The-Shoulder Camera following math
-            const targetCamPos = player.position.clone().add(cameraOffset);
-            camera.position.lerp(targetCamPos, 0.1); // Smooth camera damping lag
-            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1, 0))); // Point camera at character's chest area
-
-            // Frame Render Submission
-            renderer.render(scene, camera);
+            render3DScene();
+            requestAnimationFrame(engineLoop);
         }
 
         engineLoop();
-
-        // Dynamically recalculate dimensions if browser screen shifts sizes
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
