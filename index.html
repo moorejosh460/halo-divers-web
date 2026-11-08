@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halo Divers 2D Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #0b0e14; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #00ffcc; font-size: 20px; text-shadow: 0 0 5px #000; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">Halo Divers: Move the stick on your Xbox Controller!</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Load the 3D Engine directly from the internet -->
+    <script src="https://cloudflare.com"></script>
+
+    <script>
+        // 1. SETUP THE 3D WORLD
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // 2. CREATE THE GROUND
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.MeshBasicMaterial({ color: 0x1a2333, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = Math.PI / 2;
+        scene.add(floor);
+
+        // 3. CREATE THE PLAYER (Teal Box)
+        const playerGeo = new THREE.BoxGeometry(1, 2, 1);
+        const playerMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+        const player = new THREE.Mesh(playerGeo, playerMat);
+        player.position.y = 1; 
+        scene.add(player);
+
+        // Position camera behind the player
+        const cameraOffset = new THREE.Vector3(0, 4, 6);
+
+        // 4. CONTROLLER VARIABLE
+        let controllerIndex = null;
+
+        window.addEventListener("gamepadconnected", (e) => {
+            document.getElementById('ui').innerText = "Controller Connected! Move Left Stick.";
+            controllerIndex = e.gamepad.index;
+        });
+
+        window.addEventListener("gamepaddisconnected", () => {
+            document.getElementById('ui').innerText = "Controller Disconnected.";
+            controllerIndex = null;
+        });
+
+        // 5. GAME LOOP (Runs 60 times a second)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Read Xbox Controller Input
+            if (controllerIndex !== null) {
+                const gamepad = navigator.getGamepads()[controllerIndex];
+                if (gamepad) {
+                    const moveX = gamepad.axes[0]; // Left Stick Left/Right
+                    const moveY = gamepad.axes[1]; // Left Stick Up/Down
+
+                    // Move player if stick is pushed past deadzone
+                    if (Math.abs(moveX) > 0.15) player.position.x += moveX * 0.1;
+                    if (Math.abs(moveY) > 0.15) player.position.z += moveY * 0.1;
+                }
+            }
+
+            // Make camera follow player
+            camera.position.copy(player.position).add(cameraOffset);
+            camera.lookAt(player.position);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
