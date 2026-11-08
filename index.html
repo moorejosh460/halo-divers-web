@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers Absolute Input Fix</title>
+    <title>Halo Divers 3D Alpha</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050a12; font-family: sans-serif; }
@@ -14,124 +14,167 @@
 <body>
 
     <div id="ui">
-        HALO DIVERS SECURE CONTROL LAYER<br>
-        <span id="status" style="color: #00ffcc;">✅ CONTROLLER HANDSHAKE SUCCESSFUL</span><br>
-        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Test stick & ALL buttons now...</span>
+        HALO DIVERS: 3D HARDWARE INTERFACE LIVE<br>
+        <span id="status" style="color: #00ffcc;">✅ 3D ENGINE INITIALIZED</span><br>
+        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Move Left Stick to maneuver. Press Right Bumper (RB) to fire!</span>
     </div>
     <canvas id="gameCanvas"></canvas>
 
+    <!-- Load Three.js 3D Library Safely via CDN -->
+    <script src="https://cloudflare.com"></script>
+
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // ==========================================
+        // 1. 3D RENDER ENGINE SETUP
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050a12);
+        scene.fog = new THREE.FogExp2(0x050a12, 0.015); // Add atmosphere fog
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // Start player directly in the center
-        const player = { x: window.innerWidth / 2, y: window.innerHeight / 2, size: 30, color: '#00ffcc', speed: 7 };
+        // ==========================================
+        // 2. HARDWARE LIGHTING (Crucial for Xbox One S compatibility)
+        // ==========================================
+        const ambientLight = new THREE.AmbientLight(0x223344, 1.5); // Global soft tint
+        scene.add(ambientLight);
 
-        // GLOBAL INPUT ENGINE
-        function processAllInputs() {
-            // Grab all active gamepads across every single port
+        const sunLight = new THREE.DirectionalLight(0x00ffcc, 2.0); // Bright tactical overhead light
+        sunLight.position.set(10, 20, 10);
+        scene.add(sunLight);
+
+        // ==========================================
+        // 3. 3D GAME WORLD OBJECTS
+        // ==========================================
+        // Grid Terrain floor
+        const gridHelper = new THREE.GridHelper(200, 100, 0x00ffcc, 0x1a2636);
+        gridHelper.position.y = 0;
+        scene.add(gridHelper);
+
+        // 3D Player Character (Representing an ODST Armor Block)
+        const playerGeo = new THREE.BoxGeometry(1.2, 2.0, 1.2);
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, roughness: 0.4, metalness: 0.2 });
+        const player = new THREE.Mesh(playerGeo, playerMat);
+        player.position.set(0, 1.0, 0); // Stand perfectly on ground level
+        scene.add(player);
+
+        // Third-Person Camera Offset Config
+        const cameraOffset = new THREE.Vector3(0, 5, 8); 
+
+        // Projectiles sandbox containers
+        const projectiles = [];
+        let canFire = true;
+        let lastMoveDir = new THREE.Vector3(0, 0, -1); // Default shooting forward vector
+
+        // ==========================================
+        // 4. HARDWARE INPUT PROCESSOR
+        // ==========================================
+        function processHardwareControls() {
             const gamepads = navigator.getGamepads();
             
-            let inputDetected = false;
-            let debugText = "No Input Tracked";
-
             for (let i = 0; i < gamepads.length; i++) {
                 const pad = gamepads[i];
                 if (!pad) continue;
 
-                // --- 1. THE BRUTE-FORCE LEFT ANALOG STICK SYSTEM ---
+                // --- MANEUVER LOOPS (LEFT STICK) ---
                 if (pad.axes && pad.axes.length >= 2) {
-                    const sX = pad.axes[0];
-                    const sY = pad.axes[1];
+                    const stickX = pad.axes[0] || 0;
+                    const stickY = pad.axes[1] || 0;
 
-                    if (Math.abs(sX) > 0.15) { player.x += sX * player.speed; inputDetected = true; }
-                    if (Math.abs(sY) > 0.15) { player.y += sY * player.speed; inputDetected = true; }
-                    
-                    if (Math.abs(sX) > 0.15 || Math.abs(sY) > 0.15) {
-                        debugText = `Stick Vector Active: X(${sX.toFixed(2)}) Y(${sY.toFixed(2)})`;
+                    if (Math.abs(stickX) > 0.15 || Math.abs(stickY) > 0.15) {
+                        // Apply movement directly along the 3D space axes (X and Z floor coordinates)
+                        player.position.x += stickX * 0.15;
+                        player.position.z += stickY * 0.15;
+
+                        // Calculate and store rotation vector orientation based on direction
+                        lastMoveDir.set(stickX, 0, stickY).normalize();
+                        
+                        // Rotate player mesh smoothly to face the heading direction
+                        const targetAngle = Math.atan2(stickX, stickY);
+                        player.rotation.y = targetAngle;
                     }
                 }
 
-                // --- 2. THE ABSOLUTE BUTTON OVERRIDE SYSTEM ---
-                if (pad.buttons && pad.buttons.length > 0) {
-                    
-                    // Loop through EVERY button on the Xbox controller to see if ANYTHING is pressed
-                    for (let b = 0; b < pad.buttons.length; b++) {
-                        if (pad.buttons[b] && pad.buttons[b].pressed) {
-                            inputDetected = true;
-                            debugText = `Button ID [${b}] is actively pressed!`;
-
-                            // Standard Xbox Console Browser D-Pad Array Mapping
-                            if (b === 12) player.y -= player.speed; // D-Pad Up
-                            if (b === 13) player.y += player.speed; // D-Pad Down
-                            if (b === 14) player.x -= player.speed; // D-Pad Left
-                            if (b === 15) player.x += player.speed; // D-Pad Right
-
-                            // Fallback backup mapping if browser treats Left Analog as separate button triggers
-                            if (b === 6) player.x -= player.speed;
-                            if (b === 7) player.x += player.speed;
-                        }
+                // --- WEAPON TRIGGERS (RIGHT BUMPER) ---
+                if (pad.buttons && pad.buttons.length > 5) {
+                    const rbButton = pad.buttons[5]; // Standard hardware mapping for RB
+                    if (rbButton && rbButton.pressed && canFire) {
+                        spawn3DProjectile();
                     }
                 }
             }
-
-            // Print diagnostic tracking directly underneath your UI text
-            if (inputDetected) {
-                document.getElementById('debug').innerText = debugText;
-                document.getElementById('debug').style.color = "#00ffcc";
-            } else {
-                document.getElementById('debug').innerText = "Status: Polling controls... Push sticks hard or spam D-Pad.";
-                document.getElementById('debug').style.color = "#8fa0ba";
-            }
-
-            // Secure map boundary clip logic
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width) player.x = canvas.width;
-            if (player.y < 0) player.y = 0;
-            if (player.y > canvas.height) player.y = canvas.height;
         }
 
-        // RUNTIME RENDER ENGINE LOOP
-        function engineLoop() {
-            ctx.fillStyle = '#050a12';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // ==========================================
+        // 5. 3D PROJECTILE WEAPON PHYSICS
+        // ==========================================
+        const boltGeo = new THREE.SphereGeometry(0.2, 8, 8);
+        const boltMat = new THREE.MeshBasicMaterial({ color: 0x3399ff }); // Glowing plasma blue bullet
 
-            // Render Tactical Background Radar Rings
-            ctx.strokeStyle = '#122138';
-            ctx.lineWidth = 2;
-            for(let r = 100; r < Math.max(canvas.width, canvas.height); r += 120) {
-                ctx.beginPath();
-                ctx.arc(canvas.width / 2, canvas.height / 2, r, 0, Math.PI * 2);
-                ctx.stroke();
+        function spawn3DProjectile() {
+            canFire = false;
+
+            const projectileMesh = new THREE.Mesh(boltGeo, boltMat);
+            // Spawn bullet right at weapon chest position
+            projectileMesh.position.copy(player.position);
+            projectileMesh.position.y += 0.5; 
+            scene.add(projectileMesh);
+
+            projectiles.push({
+                mesh: projectileMesh,
+                velocity: lastMoveDir.clone().multiplyScalar(0.6), // Set velocity multiplier
+                life: 120 // Frame lifespan before automatic garbage cleanup
+            });
+
+            // Fire rate limiter (0.15 seconds gap)
+            setTimeout(() => { canFire = true; }, 150);
+        }
+
+        function updateProjectiles() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.mesh.position.add(p.velocity);
+                p.life--;
+
+                // Destroy bullet if it runs out of lifetime frames
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                    projectiles.splice(i, 1);
+                }
             }
+        }
 
-            // Run Input Checks
-            processAllInputs();
-
-            // Draw Glowing Player Box Anchor
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#00ffcc';
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
-            
-            // Draw Outer HUD Ring
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#00ffcc';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.size * 1.3, 0, Math.PI * 2);
-            ctx.stroke();
-
+        // ==========================================
+        // 6. MAIN ENGINE RENDERING HEARTBEAT
+        // ==========================================
+        function engineLoop() {
             requestAnimationFrame(engineLoop);
+
+            // Execute input frame modifications and projectile steps
+            processHardwareControls();
+            updateProjectiles();
+
+            // Dynamic Over-The-Shoulder Camera following math
+            const targetCamPos = player.position.clone().add(cameraOffset);
+            camera.position.lerp(targetCamPos, 0.1); // Smooth camera damping lag
+            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1, 0))); // Point camera at character's chest area
+
+            // Frame Render Submission
+            renderer.render(scene, camera);
         }
 
         engineLoop();
+
+        // Dynamically recalculate dimensions if browser screen shifts sizes
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
