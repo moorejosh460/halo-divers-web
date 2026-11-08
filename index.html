@@ -3,84 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers 2D Test</title>
+    <title>Halo Divers Test</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #0b0e14; font-family: sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #050811; font-family: sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 20px; left: 20px; color: #00ffcc; font-size: 20px; text-shadow: 0 0 5px #000; }
+        #ui { position: absolute; top: 25px; left: 25px; color: #00ffcc; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div id="ui">Halo Divers: Move the stick on your Xbox Controller!</div>
+    <div id="ui">Halo Divers: Press any button on your Xbox Controller!</div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Load the 3D Engine directly from the internet -->
+    <!-- Load the 3D Engine safely from CDN -->
     <script src="https://cloudflare.com"></script>
 
     <script>
-        // 1. SETUP THE 3D WORLD
+        // 1. ENGINE ENGINE INITIALIZATION
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050811);
+        
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // 2. CREATE THE GROUND
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshBasicMaterial({ color: 0x1a2333, side: THREE.DoubleSide });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = Math.PI / 2;
-        scene.add(floor);
+        // 2. VISUAL GROUND GRID (Ensures the world isn't an invisible void)
+        const gridHelper = new THREE.GridHelper(100, 50, 0x00ffcc, 0x1f2d44);
+        gridHelper.position.y = 0;
+        scene.add(gridHelper);
 
-        // 3. CREATE THE PLAYER (Teal Box)
+        // 3. TARGET OBJECT (Your ODST Spartan Block)
         const playerGeo = new THREE.BoxGeometry(1, 2, 1);
         const playerMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
         const player = new THREE.Mesh(playerGeo, playerMat);
-        player.position.y = 1; 
+        player.position.set(0, 1, 0); // Position it cleanly over the center grid
         scene.add(player);
 
-        // Position camera behind the player
-        const cameraOffset = new THREE.Vector3(0, 4, 6);
+        // Third-person offset properties
+        const cameraOffset = new THREE.Vector3(0, 4, 7);
 
-        // 4. CONTROLLER VARIABLE
-        let controllerIndex = null;
+        // 4. ROBUST GAMEPAD CONTROLLER ASSIGNMENT
+        let activeGamepadIndex = null;
 
-        window.addEventListener("gamepadconnected", (e) => {
-            document.getElementById('ui').innerText = "Controller Connected! Move Left Stick.";
-            controllerIndex = e.gamepad.index;
+        window.addEventListener("gamepadconnected", (event) => {
+            document.getElementById('ui').innerText = "Xbox Controller Active! Use Left Stick to Move.";
+            activeGamepadIndex = event.gamepad.index;
         });
 
         window.addEventListener("gamepaddisconnected", () => {
-            document.getElementById('ui').innerText = "Controller Disconnected.";
-            controllerIndex = null;
+            document.getElementById('ui').innerText = "Controller Disconnected. Reconnect and press a button.";
+            activeGamepadIndex = null;
         });
 
-        // 5. GAME LOOP (Runs 60 times a second)
+        // 5. THE RUNTIME REFRESH LOOP
         function animate() {
             requestAnimationFrame(animate);
 
-            // Read Xbox Controller Input
-            if (controllerIndex !== null) {
-                const gamepad = navigator.getGamepads()[controllerIndex];
-                if (gamepad) {
-                    const moveX = gamepad.axes[0]; // Left Stick Left/Right
-                    const moveY = gamepad.axes[1]; // Left Stick Up/Down
+            // Read the controller safely
+            if (activeGamepadIndex !== null) {
+                const gamepads = navigator.getGamepads();
+                const gamepad = gamepads[activeGamepadIndex];
+                
+                if (gamepad && gamepad.axes) {
+                    // Safe execution if axes return undefined or short length arrays
+                    const stickX = gamepad.axes[0] || 0; 
+                    const stickY = gamepad.axes[1] || 0; 
 
-                    // Move player if stick is pushed past deadzone
-                    if (Math.abs(moveX) > 0.15) player.position.x += moveX * 0.1;
-                    if (Math.abs(moveY) > 0.15) player.position.z += moveY * 0.1;
+                    // Set standard deadzone limits
+                    if (Math.abs(stickX) > 0.15) {
+                        player.position.x += stickX * 0.15;
+                    }
+                    if (Math.abs(stickY) > 0.15) {
+                        player.position.z += stickY * 0.15;
+                    }
                 }
             }
 
-            // Make camera follow player
+            // Bind the camera movement firmly to the player anchor position
             camera.position.copy(player.position).add(cameraOffset);
             camera.lookAt(player.position);
 
             renderer.render(scene, camera);
         }
 
+        // Run the system
         animate();
+
+        // Handle window shifts automatically
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
