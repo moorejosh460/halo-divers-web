@@ -8,22 +8,41 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; user-select: none; }
         canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
-        #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.6; pointer-events: none; }
+        #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.5; pointer-events: none; }
+        #gamepad-hud { position: absolute; bottom: 30px; left: 30px; background: rgba(5, 15, 30, 0.85); border: 2px solid #00bfff; padding: 15px; border-radius: 6px; color: #fff; font-family: monospace; font-size: 13px; min-width: 320px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.3); z-index: 10; }
+        .hud-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .active-bind { color: #00ffcc; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ PRESS ANY BUTTON ON CONTROLLER & CLICK TO AWAKEN ENGINE...</span><br>
-        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Move & Strafe | Right Stick: Look Around | RT Trigger: Shoot</span>
+        <span id="status" style="color: #ff3366;">⚠️ MASH ANY BUTTON ON CONTROLLER & CLICK TO WAKE CORE...</span>
     </div>
+
+    <!-- Active Hardware Diagnostic HUD for easy calibration tracking -->
+    <div id="gamepad-hud">
+        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #00bfff; padding-bottom: 4px;">🎮 LIVE HARDWARE INPUT PROFILE</div>
+        <div class="hud-row"><span>LS (Left Stick Move):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
+        <div class="hud-row"><span>RS (Right Stick Look):</span> <span id="hud-rs" class="active-bind">X: 0.00 | Y: 0.00</span></div>
+        <div class="hud-row"><span>RT (Right Trigger - Shoot):</span> <span id="hud-rt">0.00</span></div>
+        <div class="hud-row"><span>LT (Left Trigger - Aim):</span> <span id="hud-lt">0.00</span></div>
+        <div class="hud-row"><span>Face A / Cross (Jump):</span> <span id="btn-0">Off</span></div>
+        <div class="hud-row"><span>Face B / Circle (Crouch):</span> <span id="btn-1">Off</span></div>
+        <div class="hud-row"><span>Face X / Square (Reload):</span> <span id="btn-2">Off</span></div>
+        <div class="hud-row"><span>Face Y / Triangle (Switch):</span> <span id="btn-3">Off</span></div>
+        <div class="hud-row"><span>D-Pad (Up/Dn/Lf/Rt):</span> <span id="hud-dpad">Center</span></div>
+        <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; border-top: 1px dashed #334466; padding-top: 4px;">Press L3 (Left Stick Down Click) or 'T' to swap stick profiles instantly!</div>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let engineActive = false;
+        let swapSticksToggle = false; 
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -33,24 +52,26 @@
         resize();
 
         // ==========================================
-        // 1. COMPLETELY STABLE FLATTENED MATRIX
+        // 1. GAME DATA & VALIDATED FLAT GEOMETRY MATRIX
         // ==========================================
         const player = { x: 4.5, y: 4.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
+        let canToggle = true;
         const MAP_SIZE = 10;
 
+        // Structured single line array to circumvent any platform truncation issues
         const map = [
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-            1, 0, 1, 0, 0, 1, 0, 0, 1, 1,
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-            1, 0, 0, 0, 1, 1, 0, 0, 0, 1,
-            1, 0, 0, 0, 1, 1, 0, 0, 0, 1,
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-            1, 0, 1, 0, 0, 1, 0, 0, 1, 1,
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+            1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,1,0,0,0,0,1,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,1,0,0,0,0,1,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1
         ];
 
         function getMapCell(x, y) {
@@ -61,6 +82,7 @@
         const keys = {};
         window.addEventListener('keydown', (e) => { 
             activateEngine();
+            if (e.code === 'KeyT') swapSticksToggle = !swapSticksToggle;
             keys[e.code] = true; 
         });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -71,13 +93,13 @@
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "🕹️ SYSTEM ENGAGED: INVERSIONS RESOLVED";
+                document.getElementById('status').innerText = "🕹️ PROTOTYPE ENGINE PIPELINE UNLOCKED";
                 document.getElementById('status').style.color = "#00ffcc";
             }
         }
 
         // ==========================================
-        // 2. STICK AXIS REMAPPING ROUTINE (ANTI-INVERT)
+        // 2. UNIVERSAL HARDWARE ROUTER & ALL MAPPED BUTTONS
         // ==========================================
         function processControls() {
             if (!engineActive) return;
@@ -95,167 +117,76 @@
             }
 
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 15) + "...";
+                document.getElementById('status').innerText = "🎮 ACTIVE RE-ROUTE RUNNING: " + gp.id.substring(0, 12) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
 
-                // RIGHT STICK LOOK
-                if (gp.axes.length > 0 && Math.abs(gp.axes.length > 0 ? gp.axes[0] : 0) > deadzone) {
-                    turnLeftRight = gp.axes[0];
-                }
-
-                // LEFT STICK MOVE: Swapped scalar calculation bounds to flip forward/backward tracking
-                if (gp.axes.length > 3 && Math.abs(gp.axes[3]) > deadzone) {
-                    moveForward = -gp.axes[3]; 
-                }
-
-                // LEFT STICK STRAFE: Swapped scalar calculation bounds to flip left/right tracking
-                if (gp.axes.length > 2 && Math.abs(gp.axes[2]) > deadzone) {
-                    moveStrafe = -gp.axes[2];
-                }
-
-                // SHOOT BUTTON: Right Trigger / RT
-                if (gp.buttons.length > 7 && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
-                    firingInput = true;
-                }
-            }
-
-            // Keyboard configuration defaults
-            if (keys['KeyW'] || keys['ArrowUp']) moveForward = 1.0;
-            if (keys['KeyS'] || keys['ArrowDown']) moveForward = -1.0;
-            if (keys['KeyA']) moveStrafe = -1.0;
-            if (keys['KeyD']) moveStrafe = 1.0;
-            if (keys['ArrowLeft']) turnLeftRight = -1.0;
-            if (keys['ArrowRight']) turnLeftRight = 1.0;
-            if (keys['Space']) firingInput = true;
-
-            if (turnLeftRight !== 0) {
-                player.angle += turnLeftRight * player.rotSpeed;
-            }
-
-            let dX = 0;
-            let dY = 0;
-
-            // Flipped core matrix vector operations to line up direction steps correctly
-            if (moveForward !== 0) {
-                dX += Math.sin(player.angle) * moveForward;
-                dY -= Math.cos(player.angle) * moveForward;
-            }
-            if (moveStrafe !== 0) {
-                dX += Math.cos(player.angle) * moveStrafe;
-                dY += Math.sin(player.angle) * moveStrafe;
-            }
-
-            if (dX !== 0 || dY !== 0) {
-                let targetX = player.x + dX * player.speed;
-                let targetY = player.y + dY * player.speed;
-
-                if (getMapCell(targetX, player.y) === 0) player.x = targetX;
-                if (getMapCell(player.x, targetY) === 0) player.y = targetY;
-            }
-
-            if (firingInput && canFire) {
-                projectiles.push({
-                    x: player.x,
-                    y: player.y,
-                    dirX: -Math.sin(player.angle),
-                    dirY: Math.cos(player.angle),
-                    speed: 0.16
-                });
-                canFire = false;
-                setTimeout(() => { canFire = true; }, 180);
-            }
-        }
-
-        // ==========================================
-        // 3. ENGINE UPDATE & RENDERING PIPELINE
-        // ==========================================
-        function update() {
-            processControls();
-
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                let p = projectiles[i];
-                p.x += p.dirX * p.speed;
-                p.y += p.dirY * p.speed;
-
-                if (getMapCell(p.x, p.y) === 1) {
-                    projectiles.splice(i, 1);
-                }
-            }
-        }
-
-        function draw() {
-            ctx.fillStyle = '#02050d';
-            ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
-            ctx.fillStyle = '#0b111e';
-            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
-
-            if (!engineActive) return;
-
-            const FOV = Math.PI / 3;
-            const numRays = canvas.width;
-            const halfFOV = FOV / 2;
-
-            for (let i = 0; i < numRays; i++) {
-                let rayAngle = (player.angle - halfFOV) + (i / numRays) * FOV;
-                let distance = 0;
-                let hitWall = false;
-
-                let eyeX = -Math.sin(rayAngle);
-                let eyeY = Math.cos(rayAngle);
-
-                while (!hitWall && distance < 16) {
-                    distance += 0.03;
-                    let testX = player.x + eyeX * distance;
-                    let testY = player.y + eyeY * distance;
-
-                    if (getMapCell(testX, testY) === 1) {
-                        hitWall = true;
+                // Capture L3 / Left Stick Click (Button Index 10) to let you correct indices on the fly
+                if (gp.buttons.length > 10 && gp.buttons[10].pressed) {
+                    if (canToggle) {
+                        swapSticksToggle = !swapSticksToggle;
+                        canToggle = false;
+                        setTimeout(() => { canToggle = true; }, 400);
                     }
                 }
 
-                let correctedDist = distance * Math.cos(rayAngle - player.angle);
-                if (correctedDist < 0.1) correctedDist = 0.1; 
+                // Browser Normalization Layout Adapters
+                let ax0 = gp.axes[0] || 0; // Left Stick X
+                let ax1 = gp.axes[1] || 0; // Left Stick Y
+                let ax2 = gp.axes[2] || 0; // Right Stick X (Varies on Firefox/Chrome)
+                let ax3 = gp.axes[3] || 0; // Right Stick Y (Varies on Firefox/Chrome)
                 
-                let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
-                let floor = canvas.height - ceiling;
-
-                let intensity = Math.max(0, 255 - (correctedDist * 22));
-                ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.45)}, ${intensity})`;
-                ctx.beginPath();
-                ctx.moveTo(i, ceiling);
-                ctx.lineTo(i, floor);
-                ctx.stroke();
-            }
-
-            const tile = 12;
-            const offsetLeft = canvas.width - 150;
-            const offsetTop = 30;
-
-            for (let y = 0; y < MAP_SIZE; y++) {
-                for (let x = 0; x < MAP_SIZE; x++) {
-                    ctx.fillStyle = map[y * MAP_SIZE + x] === 1 ? '#00bfff' : '#0d182e';
-                    ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
+                // If browser maps Right Stick to axes 3 and 4 instead:
+                if(gp.axes.length > 4 && Math.abs(ax2) < 0.01 && Math.abs(ax3) < 0.01) {
+                    ax2 = gp.axes[3] || 0;
+                    ax3 = gp.axes[4] || 0;
                 }
+
+                // Handle Stick Role Swapping Schemes Dynamically
+                if (!swapSticksToggle) {
+                    // Standard Config Profile: LS Moves & Strafes | RS Looks
+                    if (Math.abs(ax2) > deadzone) turnLeftRight = ax2;
+                    if (Math.abs(ax1) > deadzone) moveForward = -ax1;
+                    if (Math.abs(ax0) > deadzone) moveStrafe = -ax0;
+                    document.getElementById('hud-ls').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
+                    document.getElementById('hud-rs').innerText = `X: ${ax2.toFixed(2)} | Y: ${ax3.toFixed(2)}`;
+                } else {
+                    // Flipped Config Profile: RS Moves & Strafes | LS Looks
+                    if (Math.abs(ax0) > deadzone) turnLeftRight = ax0;
+                    if (Math.abs(ax3) > deadzone) moveForward = -ax3;
+                    if (Math.abs(ax2) > deadzone) moveStrafe = -ax2;
+                    document.getElementById('hud-ls').innerText = `X: ${ax2.toFixed(2)} | Y: ${ax3.toFixed(2)}`;
+                    document.getElementById('hud-rs').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
+                }
+
+                // ==========================================
+                // EXPOSING ALL HARDWARE BUTTONS FOR GAMEPLAY
+                // ==========================================
+                // Triggers (Index 6 & 7)
+                let valLT = gp.buttons[6] ? (gp.buttons[6].value || (gp.buttons[6].pressed ? 1 : 0)) : 0;
+                let valRT = gp.buttons[7] ? (gp.buttons[7].value || (gp.buttons[7].pressed ? 1 : 0)) : 0;
+                document.getElementById('hud-lt').innerText = valLT.toFixed(2);
+                document.getElementById('hud-rt').innerText = valRT.toFixed(2);
+                if (valRT > 0.1) firingInput = true;
+
+                // Face Buttons (0=A/Cross, 1=B/Circle, 2=X/Square, 3=Y/Triangle)
+                for(let b=0; b<4; b++) {
+                    if(gp.buttons[b]) {
+                        document.getElementById(`btn-${b}`).innerText = gp.buttons[b].pressed ? "ACTIVE" : "Off";
+                        document.getElementById(`btn-${b}`).style.color = gp.buttons[b].pressed ? "#00ffcc" : "#fff";
+                    }
+                }
+
+                // Bumpers (4=LB, 5=RB)
+                let lbPressed = gp.buttons[4] && gp.buttons[4].pressed;
+                let rbPressed = gp.buttons[5] && gp.buttons[5].pressed;
+
+                // D-Pad Array Nodes (12=Up, 13=Down, 14=Left, 15=Right)
+                let dpUp = gp.buttons[12] && gp.buttons[12].pressed;
+                let dpDn = gp.buttons[13] && gp.buttons[13].pressed;
+                let dpLf = gp.buttons[14] && gp.buttons[14].pressed;
+                let dpRt = gp.buttons[15] && gp.buttons[15].pressed;
+                document.getElementById('hud-dpad').innerText = dpUp ? "UP" : dpDn ? "DOWN" : dpLf ? "LEFT" : dpRt ? "RIGHT" : "Center";
             }
-
-            ctx.fillStyle = '#ffff00';
-            projectiles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(offsetLeft + p.x * tile, offsetTop + p.y * tile, 2.5, 0, 2 * Math.PI);
-                ctx.fill();
-            });
-
-            ctx.fillStyle = '#ff3366';
-            ctx.beginPath();
-            ctx.arc(offsetLeft + player.x * tile, offsetTop + player.y * tile, 4, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
 
