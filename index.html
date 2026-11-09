@@ -71,13 +71,13 @@
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "🕹️ SYSTEM ENGAGED: CONTROLS CALIBRATED";
+                document.getElementById('status').innerText = "🕹️ SYSTEM ENGAGED: AXIS ROLES INVERTED";
                 document.getElementById('status').style.color = "#00ffcc";
             }
         }
 
         // ==========================================
-        // 2. STICK AXIS REMAPPING ROUTINE
+        // 2. STICK AXIS REMAPPING ROUTINE (SWAPPED)
         // ==========================================
         function processControls() {
             if (!engineActive) return;
@@ -95,24 +95,25 @@
             }
 
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 GAMEPAD CORRECTED: " + gp.id.substring(0, 15) + "...";
+                document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 15) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
 
-                // RIGHT STICK: Horizontal Axis (Axis 2) handles Looking Left/Right
-                if (gp.axes.length > 2 && Math.abs(gp.axes[2]) > deadzone) {
-                    turnLeftRight = gp.axes[2];
-                }
-
-                // LEFT STICK: Vertical Axis (Axis 1) handles Moving Forward/Backward
-                if (gp.axes.length > 1 && Math.abs(gp.axes[1]) > deadzone) {
-                    moveForward = gp.axes[1]; 
-                }
-
-                // LEFT STICK: Horizontal Axis (Axis 0) handles Strafing Left/Right
+                // Flipped roles to correct specific hardware orientation bugs
+                // RIGHT STICK LOOK: Transferred to early axis indexes (Axis 0)
                 if (gp.axes.length > 0 && Math.abs(gp.axes[0]) > deadzone) {
-                    moveStrafe = gp.axes[0];
+                    turnLeftRight = gp.axes[0];
+                }
+
+                // LEFT STICK MOVE: Transferred to later axis indexes (Axis 3)
+                if (gp.axes.length > 3 && Math.abs(gp.axes[3]) > deadzone) {
+                    moveForward = gp.axes[3]; 
+                }
+
+                // LEFT STICK STRAFE: Transferred to later axis indexes (Axis 2)
+                if (gp.axes.length > 2 && Math.abs(gp.axes[2]) > deadzone) {
+                    moveStrafe = gp.axes[2];
                 }
 
                 // SHOOT BUTTON: Right Trigger / RT (Index 7)
@@ -121,7 +122,7 @@
                 }
             }
 
-            // Keyboard defaults map to Left Stick simulation layout
+            // Keyboard defaults
             if (keys['KeyW'] || keys['ArrowUp']) moveForward = -1.0;
             if (keys['KeyS'] || keys['ArrowDown']) moveForward = 1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -261,4 +262,3 @@
         gameLoop();
     </script>
 </body>
-</html>
