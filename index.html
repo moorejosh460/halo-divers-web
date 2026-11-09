@@ -6,16 +6,16 @@
     <title>Halo Divers Solid Build</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-        #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.6; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
+        #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 22px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.6; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ WAITING FOR INPUT SIGNAL...</span><br>
+        <span id="status" style="color: #ff3366;">⚠️ CLICK ANYWHERE ON SCREEN TO ACTIVATE INPUT Engine...</span><br>
         <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look (L/R) | Right Stick: Move (F/B) & Strafe (L/R) | RT Trigger: Shoot</span>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -23,6 +23,7 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        let engineActive = false;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -32,37 +33,53 @@
         resize();
 
         // ==========================================
-        // 1. STRIP-PROOF MAP GRID PACKING
+        // 1. HARD-CODED SOLID MAP MATRIX
         // ==========================================
         const player = { x: 2.5, y: 2.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
-
-        // Represented as a flat layout sequence to protect data structure integrity
-        const rawLayout = [,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
-            [1,1,1,1,1,1,1,1,1,1]
-        ];
-        
-        const map = rawLayout;
         const MAP_SIZE = 10;
+
+        // Structured row matrix to guarantee it never drops rows
+        const map = [,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
 
         // Fallback input trackers
         const keys = {};
-        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keydown', (e) => { 
+            activateEngine();
+            keys[e.code] = true; 
+        });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        
+        // Force activation on screen tap/click
+        window.addEventListener('click', () => {
+            activateEngine();
+        });
+
+        function activateEngine() {
+            if (!engineActive) {
+                engineActive = true;
+                document.getElementById('status').innerText = "⌨️ KEYBOARD ACTIVE / READY FOR GAMEPAD PIN";
+                document.getElementById('status').style.color = "#ffaa00";
+            }
+        }
 
         // ==========================================
-        // 2. HARDWARE GAMEPAD ROUTER (DASH REMAPPED)
+        // 2. MODERN DUAL STICK ROUTER
         // ==========================================
         function processControls() {
+            if (!engineActive) return;
+
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
             
@@ -100,12 +117,9 @@
                 if (gp.buttons.length > 7 && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
                     firingInput = true;
                 }
-            } else {
-                document.getElementById('status').innerText = "⌨️ RUNNING VIA KEYBOARD SIMULATION";
-                document.getElementById('status').style.color = "#ffaa00";
             }
 
-            // Keyboard alternative map routing
+            // Keyboard overrides mapping
             if (keys['KeyW'] || keys['ArrowUp']) moveForward = -1.0;
             if (keys['KeyS'] || keys['ArrowDown']) moveForward = 1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -119,7 +133,7 @@
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            // Calculate directional vectors based on forward and strafe values
+            // Calculate movement vectors
             let dX = 0;
             let dY = 0;
 
@@ -132,18 +146,16 @@
                 dY += Math.sin(player.angle) * moveStrafe;
             }
 
-            // Apply movement velocity vector using progressive wall sliding calculations
+            // Apply sliding movement calculations
             if (dX !== 0 || dY !== 0) {
                 let targetX = player.x + dX * player.speed;
                 let targetY = player.y + dY * player.speed;
 
-                // X-Axis boundary check sliding loop
                 if (targetX >= 0 && targetX < MAP_SIZE) {
                     if (map[Math.floor(player.y)][Math.floor(targetX)] === 0) {
                         player.x = targetX;
                     }
                 }
-                // Y-Axis boundary check sliding loop
                 if (targetY >= 0 && targetY < MAP_SIZE) {
                     if (map[Math.floor(targetY)][Math.floor(player.x)] === 0) {
                         player.y = targetY;
@@ -151,7 +163,7 @@
                 }
             }
 
-            // Trigger firing calculations
+            // Fire handler
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
@@ -171,7 +183,7 @@
         function update() {
             processControls();
 
-            // Run physics cycles across active projectiles
+            // Run projectile tracks
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
@@ -187,13 +199,13 @@
         }
 
         function draw() {
-            // Draw floor/sky depth fields
+            // Background floor/sky colors
             ctx.fillStyle = '#02050d';
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = '#0b111e';
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            // Raycasting calculation passes
+            // Raycasting projection engine loops
             const FOV = Math.PI / 3;
             const numRays = canvas.width;
             const halfFOV = FOV / 2;
@@ -219,14 +231,13 @@
                     }
                 }
 
-                // Fish-eye lens projection corrections
                 let correctedDist = distance * Math.cos(rayAngle - player.angle);
                 if (correctedDist < 0.1) correctedDist = 0.1; 
                 
                 let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
                 let floor = canvas.height - ceiling;
 
-                // Calculate visual light falloff on blue walls
+                // High visibility dark neon-blue wall rendering passes
                 let intensity = Math.max(0, 255 - (correctedDist * 24));
                 ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.45)}, ${intensity})`;
                 ctx.beginPath();
@@ -235,15 +246,10 @@
                 ctx.stroke();
             }
 
-            // High Contrast HUD Radar Minimap (Top-Right)
+            // Top-right map overlay HUD
             const tile = 12;
             const offsetLeft = canvas.width - 150;
             const offsetTop = 30;
 
             for (let y = 0; y < MAP_SIZE; y++) {
                 for (let x = 0; x < MAP_SIZE; x++) {
-                    ctx.fillStyle = map[y][x] === 1 ? '#00bfff' : '#0d182e';
-                    ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
-                }
-            }
-
