@@ -16,7 +16,7 @@
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
         <span id="status" style="color: #ff3366;">⚠️ WAITING FOR INPUT SIGNAL...</span><br>
-        <span id="debug" style="color: #8fa0ba; font-size: 16px;">WASD / Arrows to Move, Space to Shoot. (Gamepad supported)</span>
+        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look | Right Stick: Move | Right Trigger (RT): Shoot</span>
     </div>
     <canvas id="gameCanvas"></canvas>
 
@@ -32,34 +32,33 @@
         resize();
 
         // ==========================================
-        // 1. GAME DATA & VALIDATED MATRIX MAP
+        // 1. GAME DATA & FLATTENED GRID MATRIX MAP
         // ==========================================
         const player = { x: 3.5, y: 3.5, angle: 0.0, speed: 0.04, rotSpeed: 0.03 };
         const projectiles = [];
         let canFire = true;
 
-        // Validated 10x10 map grid (1 = Wall, 0 = Open path)
-        const map = [
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 1, 1, 0, 0, 1, 1, 0, 1],
-            [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        // Clean layout array mapping to guarantee cross-browser compatibility
+        const map = [,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ];
         const MAP_SIZE = 10;
 
-        // Keyboard tracking state handlers
+        // Fallback input trackers
         const keys = {};
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         // ==========================================
-        // 2. INPUT ROUTER (HYBRID GAMEPAD + KEYBOARD)
+        // 2. STABLE GAMEPAD DETECTION ROUTER
         // ==========================================
         function processControls() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -77,35 +76,48 @@
                 document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 18) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
-                const threshold = 0.2;
-                // Array index mapping fixed to grab scalar axis elements
-                if (Math.abs(gp.axes[0]) > threshold) turnLeftRight = gp.axes[0];
-                if (Math.abs(gp.axes[1]) > threshold) moveForward = gp.axes[1];
-                if (gp.buttons[0] && gp.buttons[0].pressed) firingInput = true;
+                const deadzone = 0.2;
+
+                // Standard modern dual stick axis lookups
+                // Axis 0 = Left Stick Horizontal (LOOK)
+                if (Math.abs(gp.axes[0]) > deadzone) {
+                    turnLeftRight = gp.axes[0];
+                }
+
+                // Axis 3 = Right Stick Vertical (MOVE Forward/Backward)
+                if (Math.abs(gp.axes[3]) > deadzone) {
+                    moveForward = gp.axes[3]; 
+                }
+
+                // Index 7 = Standard Right Trigger (RT / R2) Button mapping
+                if (gp.buttons[7] && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
+                    firingInput = true;
+                }
             } else {
                 document.getElementById('status').innerText = "⌨️ RUNNING VIA KEYBOARD SIMULATION";
                 document.getElementById('status').style.color = "#ffaa00";
             }
 
-            // Keyboard checks add incremental overlay forces
+            // Keyboard overrides 
             if (keys['KeyW'] || keys['ArrowUp']) moveForward = -1.0;
             if (keys['KeyS'] || keys['ArrowDown']) moveForward = 1.0;
             if (keys['KeyA'] || keys['ArrowLeft']) turnLeftRight = -1.0;
             if (keys['KeyD'] || keys['ArrowRight']) turnLeftRight = 1.0;
             if (keys['Space']) firingInput = true;
 
-            // Turn adjustments
+            // Apply turn calculations
             if (turnLeftRight !== 0) {
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            // Movement adjustments with collision lookahead calculations
+            // Apply velocity transformation with boundary limit checks
             if (moveForward !== 0) {
                 let nextX = player.x - Math.sin(player.angle) * (moveForward * player.speed);
                 let nextY = player.y + Math.cos(player.angle) * (moveForward * player.speed);
 
                 let checkY = Math.floor(nextY);
                 let checkX = Math.floor(nextX);
+                
                 if (checkY >= 0 && checkY < MAP_SIZE && checkX >= 0 && checkX < MAP_SIZE) {
                     if (map[checkY][checkX] === 0) {
                         player.x = nextX;
@@ -114,17 +126,17 @@
                 }
             }
 
-            // Projectile spawning
+            // Projectile spawning handler
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
                     y: player.y,
                     dirX: -Math.sin(player.angle),
                     dirY: Math.cos(player.angle),
-                    speed: 0.12
+                    speed: 0.15
                 });
                 canFire = false;
-                setTimeout(() => { canFire = true; }, 250);
+                setTimeout(() => { canFire = true; }, 200); // 200ms fire rate interval
             }
         }
 
@@ -134,7 +146,7 @@
         function update() {
             processControls();
 
-            // Cycle active projectiles
+            // Handle projectile tracks
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
@@ -150,13 +162,13 @@
         }
 
         function draw() {
-            // Draw floor/sky void split backgrounds
+            // Draw floor/sky space void split backgrounds
             ctx.fillStyle = '#010307';
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = '#060d1a';
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            // Raycasting Engine Line Passes
+            // Raycasting Engine Passes
             const FOV = Math.PI / 3;
             const numRays = canvas.width;
             const halfFOV = FOV / 2;
@@ -182,30 +194,30 @@
                     }
                 }
 
-                // Fish-eye lens depth distortion fix
+                // Fish-eye lens distortion fix formula
                 let correctedDist = distance * Math.cos(rayAngle - player.angle);
                 if (correctedDist < 0.1) correctedDist = 0.1; 
                 
                 let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
                 let floor = canvas.height - ceiling;
 
-                // Color calculations with linear fade effects
+                // Depth-tinted neon blue walls shading
                 let intensity = Math.max(0, 255 - (correctedDist * 22));
-                ctx.strokeStyle = `rgb(0, ${intensity}, ${Math.floor(intensity * 0.85)})`;
+                ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.4)}, ${intensity})`;
                 ctx.beginPath();
                 ctx.moveTo(i, ceiling);
                 ctx.lineTo(i, floor);
                 ctx.stroke();
             }
 
-            // Radar Mini-Map Render Routine
+            // Radar Mini-Map Render (Top-Right)
             const tile = 12;
             const offsetLeft = canvas.width - 150;
             const offsetTop = 30;
 
             for (let y = 0; y < MAP_SIZE; y++) {
                 for (let x = 0; x < MAP_SIZE; x++) {
-                    ctx.fillStyle = map[y][x] === 1 ? '#00ffcc' : '#091224';
+                    ctx.fillStyle = map[y][x] === 1 ? '#00bfff' : '#091224';
                     ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
                 }
             }
@@ -218,7 +230,7 @@
                 ctx.fill();
             });
 
-            // Player node layer
+            // Player node indicator layer
             ctx.fillStyle = '#ff3366';
             ctx.beginPath();
             ctx.arc(offsetLeft + player.x * tile, offsetTop + player.y * tile, 4, 0, 2 * Math.PI);
