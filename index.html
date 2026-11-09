@@ -34,7 +34,7 @@
         // ==========================================
         // 1. GAME DATA & EXPLICIT BOUNDARY MAP
         // ==========================================
-        const player = { x: 3.5, y: 3.5, angle: 0.0, speed: 0.05, rotSpeed: 0.04 };
+        const player = { x: 3.5, y: 3.5, angle: 0.0, speed: 0.04, rotSpeed: 0.03 };
         const projectiles = [];
         let canFire = true;
 
@@ -56,172 +56,160 @@
         // 2. HARDWARE GAMEPAD ROUTER
         // ==========================================
         function processControls() {
-            const gamepads = navigator.getGamepads();
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
             
+            // Acquire the first active connected gamepad
             for (let i = 0; i < gamepads.length; i++) {
-                const pad = gamepads[i];
-                if (!pad) continue;
+                if (gamepads[i]) {
+                    gp = gamepads[i];
+                    break;
+                }
+            }
 
-                document.getElementById('status').innerText = "✅ GAMEPAD LINKED SUCCESSFULLY";
+            if (gp) {
+                document.getElementById('status').innerText = "🎮 GAMEPAD CONNECTED: " + gp.id.substring(0, 25) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
 
-                if (pad.axes && pad.axes.length >= 2) {
-                    const stickX = pad.axes[0] || 0; // Left Stick Left/Right
-                    const stickY = pad.axes[1] || 0; // Left Stick Up/Down
+                // Deadzone threshold filter
+                const threshold = 0.2;
+                const axisX = gp.axes[0]; // Left stick horizontal
+                const axisY = gp.axes[1]; // Left stick vertical
 
-                    // Left/Right stick turns the camera point-of-view angle
-                    if (Math.abs(stickX) > 0.15) {
-                        player.angle += stickX * player.rotSpeed;
-                    }
-
-                    // Up/Down stick moves forward/backward relative to where you look
-                    if (Math.abs(stickY) > 0.15) {
-                        const nextX = player.x - Math.sin(player.angle) * stickY * player.speed;
-                        const nextY = player.y + Math.cos(player.angle) * stickY * player.speed;
-                        
-                        // Prevent running off grid limits or clipping inside geometry walls
-                        if (nextX >= 0 && nextX < MAP_SIZE && nextY >= 0 && nextY < MAP_SIZE) {
-                            if (map[Math.floor(nextY)][Math.floor(nextX)] === 0) {
-                                player.x = nextX;
-                                player.y = nextY;
-                            }
-                        }
-                    }
-                    
-                    document.getElementById('debug').innerText = `Angle: ${(player.angle).toFixed(2)} | Vector Coordinates: X(${player.x.toFixed(2)}) Y(${player.y.toFixed(2)})`;
+                // Look Left / Right
+                if (Math.abs(axisX) > threshold) {
+                    player.angle += axisX * player.rotSpeed;
                 }
 
-                // Fire weapon when holding Right Bumper (RB)
-                if (pad.buttons && pad.buttons.length > 5) {
-                    if (pad.buttons[5] && pad.buttons[5].pressed && canFire) {
-                        fireLaser();
+                // Move Forward / Backward
+                if (Math.abs(axisY) > threshold) {
+                    let nextX = player.x - Math.sin(player.angle) * (axisY * player.speed);
+                    let nextY = player.y + Math.cos(player.angle) * (axisY * player.speed);
+
+                    // Predictive collision tracking logic against binary grid
+                    if (map[Math.floor(nextY)] && map[Math.floor(nextY)][Math.floor(nextX)] === 0) {
+                        player.x = nextX;
+                        player.y = nextY;
                     }
                 }
+
+                // Button 0 (typically 'A' or Cross) Action Mapping: Shoot
+                if (gp.buttons[0] && gp.buttons[0].pressed && canFire) {
+                    projectiles.push({
+                        x: player.x,
+                        y: player.y,
+                        dirX: -Math.sin(player.angle),
+                        dirY: Math.cos(player.angle),
+                        speed: 0.12
+                    });
+                    canFire = false;
+                    setTimeout(() => { canFire = true; }, 300); // Fire rate limiter
+                }
+            } else {
+                document.getElementById('status').innerText = "⚠️ WAITING FOR HARDWARE INPUT SIGNAL...";
+                document.getElementById('status').style.color = "#ff3366";
             }
         }
 
         // ==========================================
-        // 3. WEAPON SANDBOX CORE
+        // 3. ENGINE UPDATE & RENDERING PIPELINE
         // ==========================================
-        function fireLaser() {
-            canFire = false;
-            projectiles.push({
-                x: player.x,
-                y: player.y,
-                angle: player.angle,
-                speed: 0.12,
-                life: 60
-            });
-            setTimeout(() => { canFire = true; }, 180);
-        }
+        function update() {
+            processControls();
 
-        function updateProjectiles() {
+            // Update running projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
-                const p = projectiles[i];
-                p.x -= Math.sin(p.angle) * p.speed;
-                p.y += Math.cos(p.angle) * p.speed;
-                p.life--;
+                let p = projectiles[i];
+                p.x += p.dirX * p.speed;
+                p.y += p.dirY * p.speed;
 
-                const checkX = Math.floor(p.x);
-                const checkY = Math.floor(p.y);
-
-                if (checkX < 0 || checkX >= MAP_SIZE || checkY < 0 || checkY >= MAP_SIZE || map[checkY][checkX] === 1 || p.life <= 0) {
+                // Boundary/Wall destruction check
+                if (map[Math.floor(p.y)] && map[Math.floor(p.y)][Math.floor(p.x)] === 1) {
                     projectiles.splice(i, 1);
                 }
             }
         }
 
-        // ==========================================
-        // 4. THE 3D RAYCAST MATRIX
-        // ==========================================
-        function render3DScene() {
-            const FOV = Math.PI / 3; // 60-degree viewing viewport cone
+        function draw() {
+            // Clear Frame Buffer
+            ctx.fillStyle = '#03070d';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Pseudo-3D Raycasting Engine
+            const FOV = Math.PI / 3;
             const numRays = canvas.width;
-            const halfHeight = canvas.height / 2;
+            const halfFOV = FOV / 2;
 
-            // Clear Screen and Draw Dark Space Sky (Upper half)
-            ctx.fillStyle = '#060e1a';
-            ctx.fillRect(0, 0, canvas.width, halfHeight);
-
-            // Draw Metallic Flooring plane (Lower half)
-            ctx.fillStyle = '#101726';
-            ctx.fillRect(0, halfHeight, canvas.width, halfHeight);
-
-            // Run pixel sweep scanner
             for (let i = 0; i < numRays; i++) {
-                const rayAngle = player.angle - (FOV / 2) + (FOV * i / numRays);
-                
+                let rayAngle = (player.angle - halfFOV) + (i / numRays) * FOV;
                 let distance = 0;
                 let hitWall = false;
-                
-                const cos = -Math.sin(rayAngle);
-                const sin = Math.cos(rayAngle);
+
+                let eyeX = -Math.sin(rayAngle);
+                let eyeY = Math.cos(rayAngle);
 
                 while (!hitWall && distance < 16) {
                     distance += 0.04;
-                    const checkX = Math.floor(player.x + cos * distance);
-                    const checkY = Math.floor(player.y + sin * distance);
+                    let testX = Math.floor(player.x + eyeX * distance);
+                    let testY = Math.floor(player.y + eyeY * distance);
 
-                    if (checkX < 0 || checkX >= MAP_SIZE || checkY < 0 || checkY >= MAP_SIZE) {
+                    if (testX < 0 || testX >= MAP_SIZE || testY < 0 || testY >= MAP_SIZE) {
                         hitWall = true;
                         distance = 16;
-                    } else if (map[checkY][checkX] === 1) {
+                    } else if (map[testY][testX] === 1) {
                         hitWall = true;
                     }
                 }
 
-                // Correct fisheye lens skewing
-                const correctedDist = distance * Math.cos(rayAngle - player.angle);
-                const wallHeight = Math.min(canvas.height, (canvas.height / (correctedDist + 0.001)));
+                // Fish-eye distortion correction formulas
+                let correctedDist = distance * Math.cos(rayAngle - player.angle);
+                let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
+                let floor = canvas.height - ceiling;
 
-                // Calculate structure lighting gradient shadows based on spatial depth distance
-                const intensity = Math.max(20, 240 - (correctedDist * 18));
-                ctx.fillStyle = `rgb(0, ${intensity * 0.6}, ${intensity * 0.9})`;
-
-                // Draw solid layout slice column
-                ctx.fillRect(i, halfHeight - wallHeight / 2, 1, wallHeight);
+                // Render dynamic wall shading depth slices
+                let intensity = Math.max(0, 255 - (correctedDist * 18));
+                ctx.strokeStyle = `rgb(0, ${intensity}, ${Math.floor(intensity * 0.75)})`;
+                ctx.beginPath();
+                ctx.moveTo(i, ceiling);
+                ctx.lineTo(i, floor);
+                ctx.stroke();
             }
 
-            // Draw HUD Target Crosshair overlay
-            ctx.strokeStyle = '#00ffcc';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(canvas.width / 2, canvas.height / 2, 15, 0, Math.PI * 2);
-            ctx.stroke();
+            // Draw Top-down Radar Minimap HUD Overlay
+            const tile = 12;
+            const offsetLeft = canvas.width - 150;
+            const offsetTop = 30;
 
-            // Render active plasma shots
-            for (const p of projectiles) {
-                const dx = p.x - player.x;
-                const dy = p.y - player.y;
-                let pAngle = Math.atan2(dx, dy) - player.angle + Math.PI / 2;
-                
-                while (pAngle < -Math.PI) pAngle += Math.PI * 2;
-                while (pAngle > Math.PI) pAngle -= Math.PI * 2;
-
-                if (Math.abs(pAngle) < FOV / 2) {
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    const screenX = (canvas.width / 2) + (pAngle / (FOV / 2)) * (canvas.width / 2);
-                    const size = Math.max(4, (canvas.height / (dist + 0.1)) * 0.08);
-                    
-                    ctx.fillStyle = '#3399ff';
-                    ctx.beginPath();
-                    ctx.arc(screenX, halfHeight, size, 0, Math.PI * 2);
-                    ctx.fill();
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    ctx.fillStyle = map[y][x] === 1 ? '#00ffcc' : '#112233';
+                    ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
                 }
             }
+
+            // Draw Active Projectiles on Mini-Map
+            ctx.fillStyle = '#ffff00';
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(offsetLeft + p.x * tile, offsetTop + p.y * tile, 2, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Draw Player Position Vector Node
+            ctx.fillStyle = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(offsetLeft + player.x * tile, offsetTop + player.y * tile, 4, 0, 2 * Math.PI);
+            ctx.fill();
         }
 
-        // ==========================================
-        // 5. ENGINE CONTROL HEARTBEAT
-        // ==========================================
-        function engineLoop() {
-            processControls();
-            updateProjectiles();
-            render3DScene();
-            requestAnimationFrame(engineLoop);
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
         }
 
-        engineLoop();
+        // Initialize execution sequence
+        gameLoop();
     </script>
 </body>
 </html>
