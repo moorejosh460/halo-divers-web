@@ -60,7 +60,6 @@
         let canToggle = true;
         const MAP_SIZE = 10;
 
-        // Protected continuous template string to preserve complete room architecture data
         const rawMapData = "1111111111100000000110100001011000000001100011000110001100011000000001101000010110000000011111111111";
         
         const map = [];
@@ -117,7 +116,7 @@
                 const deadzone = 0.2;
 
                 // L3 Toggle mapping profile switcher
-                if (gp.buttons.length > 10 && gp.buttons[10] && gp.buttons[10].pressed) {
+                if (gp.buttons.length > 10 && gp.buttons.item(10).pressed) {
                     if (canToggle) {
                         swapSticksToggle = !swapSticksToggle;
                         canToggle = false;
@@ -125,15 +124,15 @@
                     }
                 }
 
-                // Fixed array value tracking lookups using brackets safely
-                let ax0 = gp.axes.length > 0 ? gp.axes[0] : 0; 
-                let ax1 = gp.axes.length > 1 ? gp.axes[1] : 0; 
-                let ax2 = gp.axes.length > 2 ? gp.axes[2] : 0; 
-                let ax3 = gp.axes.length > 3 ? gp.axes[3] : 0; 
+                // Using direct item() references to completely secure index values
+                let ax0 = gp.axes.length > 0 ? gp.axes.item(0) : 0; 
+                let ax1 = gp.axes.length > 1 ? gp.axes.item(1) : 0; 
+                let ax2 = gp.axes.length > 2 ? gp.axes.item(2) : 0; 
+                let ax3 = gp.axes.length > 3 ? gp.axes.item(3) : 0; 
                 
                 if (gp.axes.length > 4 && Math.abs(ax2) < 0.01 && Math.abs(ax3) < 0.01) {
-                    ax2 = gp.axes[3];
-                    ax3 = gp.axes[4];
+                    ax2 = gp.axes.item(3);
+                    ax3 = gp.axes.item(4);
                 }
 
                 if (!swapSticksToggle) {
@@ -151,25 +150,26 @@
                 }
 
                 // Track Analog Triggers
-                let valLT = gp.buttons.length > 6 && gp.buttons[6] ? (gp.buttons[6].value !== undefined ? gp.buttons[6].value : (gp.buttons[6].pressed ? 1 : 0)) : 0;
-                let valRT = gp.buttons.length > 7 && gp.buttons[7] ? (gp.buttons[7].value !== undefined ? gp.buttons[7].value : (gp.buttons[7].pressed ? 1 : 0)) : 0;
+                let valLT = gp.buttons.length > 6 ? (gp.buttons.item(6).value !== undefined ? gp.buttons.item(6).value : (gp.buttons.item(6).pressed ? 1 : 0)) : 0;
+                let valRT = gp.buttons.length > 7 ? (gp.buttons.item(7).value !== undefined ? gp.buttons.item(7).value : (gp.buttons.item(7).pressed ? 1 : 0)) : 0;
                 document.getElementById('hud-lt').innerText = valLT.toFixed(2);
                 document.getElementById('hud-rt').innerText = valRT.toFixed(2);
                 if (valRT > 0.1) firingInput = true;
 
                 // Track All Face Action States
                 for(let b=0; b<4; b++) {
-                    if(gp.buttons.length > b && gp.buttons[b]) {
-                        document.getElementById(`btn-${b}`).innerText = gp.buttons[b].pressed ? "ACTIVE" : "Off";
-                        document.getElementById(`btn-${b}`).style.color = gp.buttons[b].pressed ? "#00ffcc" : "#fff";
+                    if(gp.buttons.length > b) {
+                        let btn = gp.buttons.item(b);
+                        document.getElementById(`btn-${b}`).innerText = btn.pressed ? "ACTIVE" : "Off";
+                        document.getElementById(`btn-${b}`).style.color = btn.pressed ? "#00ffcc" : "#fff";
                     }
                 }
 
                 // Track D-Pad Elements
-                let dpUp = gp.buttons.length > 12 && gp.buttons[12] && gp.buttons[12].pressed;
-                let dpDn = gp.buttons.length > 13 && gp.buttons[13] && gp.buttons[13].pressed;
-                let dpLf = gp.buttons.length > 14 && gp.buttons[14] && gp.buttons[14].pressed;
-                let dpRt = gp.buttons.length > 15 && gp.buttons[15] && gp.buttons[15].pressed;
+                let dpUp = gp.buttons.length > 12 && gp.buttons.item(12).pressed;
+                let dpDn = gp.buttons.length > 13 && gp.buttons.item(13).pressed;
+                let dpLf = gp.buttons.length > 14 && gp.buttons.item(14).pressed;
+                let dpRt = gp.buttons.length > 15 && gp.buttons.item(15).pressed;
                 document.getElementById('hud-dpad').innerText = dpUp ? "UP" : dpDn ? "DOWN" : dpLf ? "LEFT" : dpRt ? "RIGHT" : "Center";
             }
 
@@ -189,3 +189,6 @@
             let dX = 0; let dY = 0;
             if (moveForward !== 0) {
                 dX += Math.sin(player.angle) * moveForward;
+                dY -= Math.cos(player.angle) * moveForward;
+            }
+            if (moveStrafe !== 0) {
