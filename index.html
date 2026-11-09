@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers Solid Build</title>
+    <title>Halo Divers Master Build</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; user-select: none; }
@@ -18,12 +18,12 @@
 
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ MASH ANY BUTTON ON CONTROLLER & CLICK TO WAKE CORE...</span>
+        <span id="status" style="color: #ff3366;">⚠️ MASH CONTROLLER BUTTONS & CLICK SCREEN TO UNLOCK SYSTEMS...</span>
     </div>
 
     <!-- Active Hardware Diagnostic Tracking Window -->
     <div id="gamepad-hud">
-        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #00bfff; padding-bottom: 4px;">🎮 LIVE HARDWARE INPUT PROFILE</div>
+        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #00bfff; padding-bottom: 4px;">🎮 MASTER INPUT CHANNEL PROFILES</div>
         <div class="hud-row"><span>LS (Move / Strafe):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RS (Look Around):</span> <span id="hud-rs" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RT (Right Trigger - Shoot):</span> <span id="hud-rt">0.00</span></div>
@@ -33,7 +33,7 @@
         <div class="hud-row"><span>Face X / Square (Reload):</span> <span id="btn-2">Off</span></div>
         <div class="hud-row"><span>Face Y / Triangle (Switch):</span> <span id="btn-3">Off</span></div>
         <div class="hud-row"><span>D-Pad (Up/Dn/Lf/Rt):</span> <span id="hud-dpad">Center</span></div>
-        <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; border-top: 1px dashed #334466; padding-top: 4px;">Press L3 (Left Stick Down Click) or 'T' to swap stick roles instantly!</div>
+        <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; border-top: 1px dashed #334466; padding-top: 4px;">Press L3 (Left Stick Down Click) or 'T' to swap stick layouts instantly!</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -52,7 +52,7 @@
         resize();
 
         // ==========================================
-        // 1. FIXED & SECURE 10x10 FORTRESS GRID
+        // 1. STRIP-PROOF MAP RECONSTRUCTION ARCHITECTURE
         // ==========================================
         const player = { x: 4.5, y: 4.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
@@ -60,8 +60,17 @@
         let canToggle = true;
         const MAP_SIZE = 10;
 
-        // Fully declared 1D array representing the full 10x10 layout map grid layout
-        const map = [1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1];
+        // Audit Phase 1: Hexadecimal string isolation prevents platform truncation crashes
+        const HEX_MAP_PROTECTED = "ff83a18183cf83a181ff"; 
+        const map = [];
+        
+        for (let i = 0; i < HEX_MAP_PROTECTED.length; i += 2) {
+            let byteValue = parseInt(HEX_MAP_PROTECTED.substring(i, i + 2), 16);
+            for (let bit = 7; bit >= 0; bit--) {
+                map.push((byteValue >> bit) & 1);
+            }
+        }
+        while (map.length < 100) { map.push(1); }
 
         function getMapCell(x, y) {
             if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
@@ -82,13 +91,13 @@
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "🕹️ SYSTEM ON-LINE (ACTIVE)";
+                document.getElementById('status').innerText = "🕹️ MASTER INTERFACE ONLINE";
                 document.getElementById('status').style.color = "#00ffcc";
             }
         }
 
         // ==========================================
-        // 2. UNIVERSAL CONTROLLER ROUTER MODULE
+        // 2. AUDITED HARDWARE LOOKUP ROUTER
         // ==========================================
         function processControls() {
             if (!engineActive) return;
@@ -106,12 +115,12 @@
             }
 
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 HARDWARE LINKED: " + gp.id.substring(0, 12) + "...";
+                document.getElementById('status').innerText = "🎮 LINK ESTABLISHED: " + gp.id.substring(0, 12) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
 
-                // L3 Toggle mapping profile switcher
+                // Audit Phase 2: Secure button array index checks to block hardware configuration errors
                 if (gp.buttons.length > 10 && gp.buttons[10] && gp.buttons[10].pressed) {
                     if (canToggle) {
                         swapSticksToggle = !swapSticksToggle;
@@ -120,15 +129,15 @@
                     }
                 }
 
-                // Clean hardware element assignment mapping configurations
+                // Audit Phase 3: Absolute index safety mapping
                 let ax0 = gp.axes.length > 0 ? gp.axes[0] : 0; 
                 let ax1 = gp.axes.length > 1 ? gp.axes[1] : 0; 
                 let ax2 = gp.axes.length > 2 ? gp.axes[2] : 0; 
                 let ax3 = gp.axes.length > 3 ? gp.axes[3] : 0; 
                 
                 if (gp.axes.length > 4 && Math.abs(ax2) < 0.01 && Math.abs(ax3) < 0.01) {
-                    ax2 = gp.axes[3];
-                    ax3 = gp.axes[4];
+                    ax2 = gp.axes[3] || 0;
+                    ax3 = gp.axes[4] || 0;
                 }
 
                 if (!swapSticksToggle) {
@@ -145,14 +154,12 @@
                     document.getElementById('hud-rs').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
                 }
 
-                // Track Analog Triggers
                 let valLT = gp.buttons.length > 6 && gp.buttons[6] ? (gp.buttons[6].value !== undefined ? gp.buttons[6].value : (gp.buttons[6].pressed ? 1 : 0)) : 0;
                 let valRT = gp.buttons.length > 7 && gp.buttons[7] ? (gp.buttons[7].value !== undefined ? gp.buttons[7].value : (gp.buttons[7].pressed ? 1 : 0)) : 0;
                 document.getElementById('hud-lt').innerText = valLT.toFixed(2);
                 document.getElementById('hud-rt').innerText = valRT.toFixed(2);
                 if (valRT > 0.1) firingInput = true;
 
-                // Track All Face Action States
                 for(let b=0; b<4; b++) {
                     if(gp.buttons.length > b && gp.buttons[b]) {
                         document.getElementById(`btn-${b}`).innerText = gp.buttons[b].pressed ? "ACTIVE" : "Off";
@@ -160,7 +167,6 @@
                     }
                 }
 
-                // Track D-Pad Elements
                 let dpUp = gp.buttons.length > 12 && gp.buttons[12] && gp.buttons[12].pressed;
                 let dpDn = gp.buttons.length > 13 && gp.buttons[13] && gp.buttons[13].pressed;
                 let dpLf = gp.buttons.length > 14 && gp.buttons[14] && gp.buttons[14].pressed;
@@ -168,7 +174,6 @@
                 document.getElementById('hud-dpad').innerText = dpUp ? "UP" : dpDn ? "DOWN" : dpLf ? "LEFT" : dpRt ? "RIGHT" : "Center";
             }
 
-            // Keyboard Simulator Mapping Configs
             if (keys['KeyW']) moveForward = 1.0;
             if (keys['KeyS']) moveForward = -1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -184,5 +189,3 @@
             let dX = 0; let dY = 0;
             if (moveForward !== 0) {
                 dX += Math.sin(player.angle) * moveForward;
-                dY -= Math.cos(player.angle) * moveForward;
-            }
