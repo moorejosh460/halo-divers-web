@@ -15,7 +15,7 @@
 
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ CLICK ANYWHERE ON THE SCREEN TO INITIALIZE RUNTIME Engine...</span><br>
+        <span id="status" style="color: #ff3366;">⚠️ CLICK ANYWHERE ON SCREEN TO ACTIVATE ENGINE</span><br>
         <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look (L/R) | Right Stick: Move (F/B) & Strafe (L/R) | RT Trigger: Shoot</span>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -33,26 +33,31 @@
         resize();
 
         // ==========================================
-        // 1. BULLETPROOF EMBEDDED MAP TEXT STRING
+        // 1. STABLE FIXED GRID CONFIGURATION
         // ==========================================
-        const player = { x: 2.5, y: 2.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
+        const player = { x: 4.5, y: 4.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
         const MAP_SIZE = 10;
 
-        // One continuous text line representation to make data stripping impossible
-        const layoutString = "1111111111100000000110010010011000000001100011000110001100011000000001100100100110000000011111111111";
-        
-        // Convert safe line text to runtime operational integer matrix maps
-        const map = [];
-        for (let r = 0; r < MAP_SIZE; r++) {
-            const row = [];
-            for (let c = 0; r < MAP_SIZE; c++) {
-                const index = r * MAP_SIZE + c;
-                if (index >= layoutString.length) break;
-                row.push(parseInt(layoutString.charAt(index)) || 0);
-            }
-            if (row.length > 0) map.push(row);
+        // Flattened 10x10 map layout structure without multi-line array elements
+        const map = [
+            1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,1,0,0,0,0,1,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,1,0,0,0,0,1,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1
+        ];
+
+        // Safe index checker replacing unstable matrix checks
+        function getMapCell(x, y) {
+            if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
+            return map[Math.floor(y) * MAP_SIZE + Math.floor(x)];
         }
 
         // Alternative input trackers
@@ -62,16 +67,13 @@
             keys[e.code] = true; 
         });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-        
-        window.addEventListener('click', () => {
-            activateEngine();
-        });
+        window.addEventListener('click', activateEngine);
 
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "⌨️ RUNNING INPUT CHANNELS (READY)";
-                document.getElementById('status').style.color = "#ffaa00";
+                document.getElementById('status').innerText = "🕹️ SYSTEM ON-LINE (ACTIVE)";
+                document.getElementById('status').style.color = "#00ffcc";
             }
         }
 
@@ -94,7 +96,7 @@
             }
 
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 18) + "...";
+                document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 15) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
@@ -134,7 +136,7 @@
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            // Calculate movement directional tracking vectors
+            // Calculate movement directional vectors
             let dX = 0;
             let dY = 0;
 
@@ -147,29 +149,16 @@
                 dY += Math.sin(player.angle) * moveStrafe;
             }
 
-            // Secure movement sliding routine
+            // Apply sliding movement calculations
             if (dX !== 0 || dY !== 0) {
                 let targetX = player.x + dX * player.speed;
                 let targetY = player.y + dY * player.speed;
 
-                let floorY = Math.floor(player.y);
-                let floorX = Math.floor(player.x);
-                let targetFloorX = Math.floor(targetX);
-                let targetFloorY = Math.floor(targetY);
-
-                if (targetFloorX >= 0 && targetFloorX < MAP_SIZE) {
-                    if (map[floorY] && map[floorY][targetFloorX] === 0) {
-                        player.x = targetX;
-                    }
-                }
-                if (targetFloorY >= 0 && targetFloorY < MAP_SIZE) {
-                    if (map[targetFloorY] && map[targetFloorY][floorX] === 0) {
-                        player.y = targetY;
-                    }
-                }
+                if (getMapCell(targetX, player.y) === 0) player.x = targetX;
+                if (getMapCell(player.x, targetY) === 0) player.y = targetY;
             }
 
-            // Fire handler engine trigger
+            // Trigger firing calculations
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
@@ -189,32 +178,26 @@
         function update() {
             processControls();
 
-            // Run projectile tracks
+            // Run physics cycles across active projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
                 p.y += p.dirY * p.speed;
 
-                let testX = Math.floor(p.x);
-                let testY = Math.floor(p.y);
-
-                if (testX < 0 || testX >= MAP_SIZE || testY < 0 || testY >= MAP_SIZE || !map[testY] || map[testY][testX] === 1) {
+                if (getMapCell(p.x, p.y) === 1) {
                     projectiles.splice(i, 1);
                 }
             }
         }
 
         function draw() {
-            // Background floor/sky colors
+            // Draw floor/sky space backgrounds
             ctx.fillStyle = '#02050d';
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = '#0b111e';
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            // Guard against empty array map checks
-            if (map.length < MAP_SIZE) return;
-
-            // Raycasting projection engine loops
+            // Raycasting engine calculations
             const FOV = Math.PI / 3;
             const numRays = canvas.width;
             const halfFOV = FOV / 2;
@@ -229,13 +212,10 @@
 
                 while (!hitWall && distance < 16) {
                     distance += 0.03;
-                    let testX = Math.floor(player.x + eyeX * distance);
-                    let testY = Math.floor(player.y + eyeY * distance);
+                    let testX = player.x + eyeX * distance;
+                    let testY = player.y + eyeY * distance;
 
-                    if (testX < 0 || testX >= MAP_SIZE || testY < 0 || testY >= MAP_SIZE) {
-                        hitWall = true;
-                        distance = 16;
-                    } else if (map[testY] && map[testY][testX] === 1) {
+                    if (getMapCell(testX, testY) === 1) {
                         hitWall = true;
                     }
                 }
@@ -246,5 +226,33 @@
                 let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
                 let floor = canvas.height - ceiling;
 
-                // High visibility dark neon-blue wall rendering passes
-                let intensity = Math.max(0, 255 - (correctedDist * 24));
+                // Color depth matrix light calculations
+                let intensity = Math.max(0, 255 - (correctedDist * 22));
+                ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.45)}, ${intensity})`;
+                ctx.beginPath();
+                ctx.moveTo(i, ceiling);
+                ctx.lineTo(i, floor);
+                ctx.stroke();
+            }
+
+            // Radar Mini-Map Render Routine (Top-Right)
+            const tile = 12;
+            const offsetLeft = canvas.width - 150;
+            const offsetTop = 30;
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    ctx.fillStyle = map[y * MAP_SIZE + x] === 1 ? '#00bfff' : '#0d182e';
+                    ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
+                }
+            }
+
+            // Projectiles layer
+            ctx.fillStyle = '#ffff00';
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(offsetLeft + p.x * tile, offsetTop + p.y * tile, 2.5, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Player position tracking overlay node
