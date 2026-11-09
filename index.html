@@ -15,7 +15,7 @@
 
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ CLICK ANYWHERE ON SCREEN TO ACTIVATE ENGINE</span><br>
+        <span id="status" style="color: #ff3366;">⚠️ PRESS 'A' ON CONTROLLER & CLICK SCREEN TO UNLOCK ENGINE...</span><br>
         <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look (L/R) | Right Stick: Move (F/B) & Strafe (L/R) | RT Trigger: Shoot</span>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -33,14 +33,14 @@
         resize();
 
         // ==========================================
-        // 1. STABLE FIXED GRID CONFIGURATION
+        // 1. COMPLETELY STABLE FLATTENED MATRIX
         // ==========================================
         const player = { x: 4.5, y: 4.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
         const MAP_SIZE = 10;
 
-        // Flattened 10x10 map layout structure without multi-line array elements
+        // Guaranteed unbroken array layout - no blank commas or missing brackets
         const map = [
             1,1,1,1,1,1,1,1,1,1,
             1,0,0,0,0,0,0,0,0,1,
@@ -54,25 +54,29 @@
             1,1,1,1,1,1,1,1,1,1
         ];
 
-        // Safe index checker replacing unstable matrix checks
         function getMapCell(x, y) {
             if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
             return map[Math.floor(y) * MAP_SIZE + Math.floor(x)];
         }
 
-        // Alternative input trackers
+        // Alternative keyboard engine fallback hooks
         const keys = {};
         window.addEventListener('keydown', (e) => { 
             activateEngine();
             keys[e.code] = true; 
         });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        
+        // Listen for hardware controller wake-up events
+        window.addEventListener("gamepadconnected", () => {
+            activateEngine();
+        });
         window.addEventListener('click', activateEngine);
 
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "🕹️ SYSTEM ON-LINE (ACTIVE)";
+                document.getElementById('status').innerText = "🕹️ RENDERING CORE: ONLINE";
                 document.getElementById('status').style.color = "#00ffcc";
             }
         }
@@ -96,7 +100,7 @@
             }
 
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 GAMEPAD ACTIVE: " + gp.id.substring(0, 15) + "...";
+                document.getElementById('status').innerText = "🎮 GAMEPAD CONNECTED: " + gp.id.substring(0, 15) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
@@ -122,7 +126,7 @@
                 }
             }
 
-            // Keyboard overrides configurations
+            // Keyboard direct backups
             if (keys['KeyW'] || keys['ArrowUp']) moveForward = -1.0;
             if (keys['KeyS'] || keys['ArrowDown']) moveForward = 1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -131,12 +135,10 @@
             if (keys['ArrowRight']) turnLeftRight = 1.0;
             if (keys['Space']) firingInput = true;
 
-            // Apply viewing rotation adjustments
             if (turnLeftRight !== 0) {
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            // Calculate movement directional vectors
             let dX = 0;
             let dY = 0;
 
@@ -149,7 +151,6 @@
                 dY += Math.sin(player.angle) * moveStrafe;
             }
 
-            // Apply sliding movement calculations
             if (dX !== 0 || dY !== 0) {
                 let targetX = player.x + dX * player.speed;
                 let targetY = player.y + dY * player.speed;
@@ -158,7 +159,6 @@
                 if (getMapCell(player.x, targetY) === 0) player.y = targetY;
             }
 
-            // Trigger firing calculations
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
@@ -178,7 +178,6 @@
         function update() {
             processControls();
 
-            // Run physics cycles across active projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
@@ -191,13 +190,13 @@
         }
 
         function draw() {
-            // Draw floor/sky space backgrounds
             ctx.fillStyle = '#02050d';
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
             ctx.fillStyle = '#0b111e';
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            // Raycasting engine calculations
+            if (!engineActive) return;
+
             const FOV = Math.PI / 3;
             const numRays = canvas.width;
             const halfFOV = FOV / 2;
@@ -226,7 +225,6 @@
                 let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
                 let floor = canvas.height - ceiling;
 
-                // Color depth matrix light calculations
                 let intensity = Math.max(0, 255 - (correctedDist * 22));
                 ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.45)}, ${intensity})`;
                 ctx.beginPath();
@@ -235,7 +233,6 @@
                 ctx.stroke();
             }
 
-            // Radar Mini-Map Render Routine (Top-Right)
             const tile = 12;
             const offsetLeft = canvas.width - 150;
             const offsetTop = 30;
@@ -247,7 +244,6 @@
                 }
             }
 
-            // Projectiles layer
             ctx.fillStyle = '#ffff00';
             projectiles.forEach(p => {
                 ctx.beginPath();
@@ -255,4 +251,19 @@
                 ctx.fill();
             });
 
-            // Player position tracking overlay node
+            ctx.fillStyle = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(offsetLeft + player.x * tile, offsetTop + player.y * tile, 4, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
