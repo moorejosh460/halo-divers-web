@@ -52,7 +52,7 @@
         resize();
 
         // ==========================================
-        // 1. STRIP-PROOF MAP RECONSTRUCTION ARCHITECTURE
+        // 1. STRIP-PROOF HEXADECIMAL ROOM MAP
         // ==========================================
         const player = { x: 4.5, y: 4.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
@@ -60,7 +60,6 @@
         let canToggle = true;
         const MAP_SIZE = 10;
 
-        // Audit Phase 1: Hexadecimal string isolation prevents platform truncation crashes
         const HEX_MAP_PROTECTED = "ff83a18183cf83a181ff"; 
         const map = [];
         
@@ -91,13 +90,13 @@
         function activateEngine() {
             if (!engineActive) {
                 engineActive = true;
-                document.getElementById('status').innerText = "🕹️ MASTER INTERFACE ONLINE";
+                document.getElementById('status').innerText = "MASTERS UNLOCKED - SYSTEMS ENAGED";
                 document.getElementById('status').style.color = "#00ffcc";
             }
         }
 
         // ==========================================
-        // 2. AUDITED HARDWARE LOOKUP ROUTER
+        // 2. STABLE HARDWARE LOOKUP MODULE
         // ==========================================
         function processControls() {
             if (!engineActive) return;
@@ -120,8 +119,7 @@
                 
                 const deadzone = 0.2;
 
-                // Audit Phase 2: Secure button array index checks to block hardware configuration errors
-                if (gp.buttons.length > 10 && gp.buttons[10] && gp.buttons[10].pressed) {
+                if (gp.buttons.length > 10 && gp.buttons[10].pressed) {
                     if (canToggle) {
                         swapSticksToggle = !swapSticksToggle;
                         canToggle = false;
@@ -129,7 +127,7 @@
                     }
                 }
 
-                // Audit Phase 3: Absolute index safety mapping
+                // Clean hardware parsing architecture using standard scalar lookup profiles
                 let ax0 = gp.axes.length > 0 ? gp.axes[0] : 0; 
                 let ax1 = gp.axes.length > 1 ? gp.axes[1] : 0; 
                 let ax2 = gp.axes.length > 2 ? gp.axes[2] : 0; 
@@ -154,8 +152,8 @@
                     document.getElementById('hud-rs').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
                 }
 
-                let valLT = gp.buttons.length > 6 && gp.buttons[6] ? (gp.buttons[6].value !== undefined ? gp.buttons[6].value : (gp.buttons[6].pressed ? 1 : 0)) : 0;
-                let valRT = gp.buttons.length > 7 && gp.buttons[7] ? (gp.buttons[7].value !== undefined ? gp.buttons[7].value : (gp.buttons[7].pressed ? 1 : 0)) : 0;
+                let valLT = gp.buttons.length > 6 ? (gp.buttons[6].value !== undefined ? gp.buttons[6].value : (gp.buttons[6].pressed ? 1 : 0)) : 0;
+                let valRT = gp.buttons.length > 7 ? (gp.buttons[7].value !== undefined ? gp.buttons[7].value : (gp.buttons[7].pressed ? 1 : 0)) : 0;
                 document.getElementById('hud-lt').innerText = valLT.toFixed(2);
                 document.getElementById('hud-rt').innerText = valRT.toFixed(2);
                 if (valRT > 0.1) firingInput = true;
@@ -167,10 +165,10 @@
                     }
                 }
 
-                let dpUp = gp.buttons.length > 12 && gp.buttons[12] && gp.buttons[12].pressed;
-                let dpDn = gp.buttons.length > 13 && gp.buttons[13] && gp.buttons[13].pressed;
-                let dpLf = gp.buttons.length > 14 && gp.buttons[14] && gp.buttons[14].pressed;
-                let dpRt = gp.buttons.length > 15 && gp.buttons[15] && gp.buttons[15].pressed;
+                let dpUp = gp.buttons.length > 12 && gp.buttons[12].pressed;
+                let dpDn = gp.buttons.length > 13 && gp.buttons[13].pressed;
+                let dpLf = gp.buttons.length > 14 && gp.buttons[14].pressed;
+                let dpRt = gp.buttons.length > 15 && gp.buttons[15].pressed;
                 document.getElementById('hud-dpad').innerText = dpUp ? "UP" : dpDn ? "DOWN" : dpLf ? "LEFT" : dpRt ? "RIGHT" : "Center";
             }
 
@@ -189,3 +187,11 @@
             let dX = 0; let dY = 0;
             if (moveForward !== 0) {
                 dX += Math.sin(player.angle) * moveForward;
+                dY -= Math.cos(player.angle) * moveForward;
+            }
+            if (moveStrafe !== 0) {
+                dX -= Math.cos(player.angle) * moveStrafe;
+                dY -= Math.sin(player.angle) * moveStrafe;
+            }
+
+            if (dX !== 0 || dY !== 0) {
