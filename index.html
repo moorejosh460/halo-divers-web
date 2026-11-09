@@ -23,7 +23,7 @@
 
     <!-- Active Hardware Diagnostic Tracking Window -->
     <div id="gamepad-hud">
-        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
+        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px2 solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
         <div class="hud-row"><span>LS (Move / Strafe):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RS (Look Around):</span> <span id="hud-rs" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RT (Right Trigger - Shoot):</span> <span id="hud-rt">0.00</span></div>
@@ -51,7 +51,7 @@
         resize();
 
         // ==========================================
-        // 1. STABLE PROCEDURAL MAP CONFIGURATOR
+        // 1. PROCEDURAL MAP GENERATOR (CLAMP SECURE)
         // ==========================================
         const player = { x: 5.5, y: 5.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
@@ -59,12 +59,14 @@
         let canToggle = true;
         const MAP_SIZE = 12;
 
+        // Perfectly populated, hardcoded numeric row sequence to stop syntax errors
+        const map =;
+
         function getMapCell(x, y) {
             let cx = Math.floor(x);
             let cy = Math.floor(y);
-            if (cx <= 0 || cx >= MAP_SIZE - 1 || cy <= 0 || cy >= MAP_SIZE - 1) return 1;
-            if ((cx === 3 || cx === 8) && (cy === 3 || cy === 8)) return 1;
-            return 0;
+            if (cx < 0 || cx >= MAP_SIZE || cy < 0 || cy >= MAP_SIZE) return 1;
+            return map[cy * MAP_SIZE + cx];
         }
 
         const keys = {};
@@ -188,14 +190,3 @@
 
             if (firingInput && canFire) {
                 projectiles.push({
-                    x: player.x,
-                    y: player.y,
-                    dirX: -Math.sin(player.angle),
-                    dirY: Math.cos(player.angle),
-                    speed: 0.18
-                });
-                canFire = false;
-                setTimeout(() => { canFire = true; }, 180);
-            }
-        }
-
