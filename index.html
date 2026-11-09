@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers - Ultimate Stable Engine</title>
+    <title>Halo Divers - Absolute Production Build</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #02040a; font-family: sans-serif; user-select: none; }
@@ -17,11 +17,11 @@
 <body>
 
     <div id="ui">
-        HALO DIVERS: 12X TOTAL AUDITED CORE<br>
-        <span id="status" style="color: #ff3366;">⚠️ ACTION REQUIRED: PRESS ANY CONTROLLER BUTTON + CLICK WINDOW TO START...</span>
+        HALO DIVERS: MASTER PRODUCTION CORE<br>
+        <span id="status" style="color: #00ffcc;">🕹️ ENGINE ACTIVE - READY FOR INPUT SIGNALS</span>
     </div>
 
-    <!-- Live Diagnostics Panel -->
+    <!-- Active Hardware Diagnostic Tracking Window -->
     <div id="gamepad-hud">
         <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
         <div class="hud-row"><span>LS (Move / Strafe):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
@@ -41,7 +41,6 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let engineActive = false;
         let swapSticksToggle = false; 
 
         function resize() {
@@ -52,7 +51,7 @@
         resize();
 
         // ==========================================
-        // 1. PROCEDURAL MAP GENERATOR (CLAMP SECURE)
+        // 1. STABLE PROCEDURAL MAP CONFIGURATOR
         // ==========================================
         const player = { x: 5.5, y: 5.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
@@ -70,29 +69,15 @@
 
         const keys = {};
         window.addEventListener('keydown', (e) => { 
-            activateEngine();
             if (e.code === 'KeyT') swapSticksToggle = !swapSticksToggle;
             keys[e.code] = true; 
         });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-        
-        window.addEventListener("gamepadconnected", () => { activateEngine(); });
-        window.addEventListener('click', activateEngine);
-
-        function activateEngine() {
-            if (!engineActive) {
-                engineActive = true;
-                document.getElementById('status').innerText = "🕹️ SYSTEM ON-LINE (ACTIVE)";
-                document.getElementById('status').style.color = "#00ffcc";
-            }
-        }
 
         // ==========================================
         // 2. UNCRASHABLE DEEP AUTOMATED GAMEPAD ENGINE
         // ==========================================
         function processControls() {
-            if (!engineActive) return;
-
             let rawBuffer = navigator.getGamepads ? navigator.getGamepads() : null;
             let gamepads = [];
             if (rawBuffer) {
@@ -165,8 +150,12 @@
                 let dLf = getButton(14).pressed;
                 let dRt = getButton(15).pressed;
                 document.getElementById('hud-dpad').innerText = dUp ? "UP" : dDn ? "DOWN" : dLf ? "LEFT" : dRt ? "RIGHT" : "Center";
+            } else {
+                document.getElementById('status').innerText = "⌨️ RUNNING INPUT ENGINE FALLBACK CHANNELS";
+                document.getElementById('status').style.color = "#ffaa00";
             }
 
+            // Keyboard overrides configurations
             if (keys['KeyW']) moveForward = 1.0;
             if (keys['KeyS']) moveForward = -1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -200,3 +189,13 @@
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
+                    y: player.y,
+                    dirX: -Math.sin(player.angle),
+                    dirY: Math.cos(player.angle),
+                    speed: 0.18
+                });
+                canFire = false;
+                setTimeout(() => { canFire = true; }, 180);
+            }
+        }
+
