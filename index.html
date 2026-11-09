@@ -15,15 +15,12 @@
     </style>
 </head>
 <body>
-
     <div id="ui">
         HALO DIVERS: MASTER PRODUCTION CORE<br>
         <span id="status" style="color: #00ffcc;">🕹️ ENGINE ACTIVE - READY FOR INPUT SIGNALS</span>
     </div>
-
-    <!-- Active Hardware Diagnostic Tracking Window -->
     <div id="gamepad-hud">
-        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px2 solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
+        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
         <div class="hud-row"><span>LS (Move / Strafe):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RS (Look Around):</span> <span id="hud-rs" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RT (Right Trigger - Shoot):</span> <span id="hud-rt">0.00</span></div>
@@ -35,13 +32,11 @@
         <div class="hud-row"><span>D-Pad Directional:</span> <span id="hud-dpad">Center</span></div>
         <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; padding-top: 4px; text-align: center;">Press L3 (Left Stick Down Click) or 'T' to swap stick profiles on the fly!</div>
     </div>
-
     <canvas id="gameCanvas"></canvas>
-
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let swapSticksToggle = false; 
+        let swapSticksToggle = false;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -51,7 +46,7 @@
         resize();
 
         // ==========================================
-        // 1. PROCEDURAL MAP GENERATOR (CLAMP SECURE)
+        // 1. MAP + PLAYER
         // ==========================================
         const player = { x: 5.5, y: 5.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
@@ -59,8 +54,21 @@
         let canToggle = true;
         const MAP_SIZE = 12;
 
-        // Perfectly populated, hardcoded numeric row sequence to stop syntax errors
-        const map =;
+        // 0 = empty, 1 = wall
+        const map = [
+            1,1,1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,0,0,1,
+            1,0,1,1,0,1,1,0,1,1,0,1,
+            1,0,1,0,0,0,0,0,0,1,0,1,
+            1,0,0,0,1,1,1,1,0,0,0,1,
+            1,0,1,0,0,0,0,0,0,1,0,1,
+            1,0,1,0,1,0,0,1,0,1,0,1,
+            1,0,0,0,1,0,0,1,0,0,0,1,
+            1,0,1,0,0,0,0,0,0,1,0,1,
+            1,0,1,1,0,1,1,0,1,1,0,1,
+            1,0,0,0,0,0,0,0,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1,1,1
+        ];
 
         function getMapCell(x, y) {
             let cx = Math.floor(x);
@@ -70,14 +78,14 @@
         }
 
         const keys = {};
-        window.addEventListener('keydown', (e) => { 
+        window.addEventListener('keydown', (e) => {
             if (e.code === 'KeyT') swapSticksToggle = !swapSticksToggle;
-            keys[e.code] = true; 
+            keys[e.code] = true;
         });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         // ==========================================
-        // 2. UNCRASHABLE DEEP AUTOMATED GAMEPAD ENGINE
+        // 2. GAMEPAD + KEYBOARD ENGINE
         // ==========================================
         function processControls() {
             let rawBuffer = navigator.getGamepads ? navigator.getGamepads() : null;
@@ -87,20 +95,19 @@
                     if (rawBuffer[idx]) gamepads.push(rawBuffer[idx]);
                 }
             }
-            
+
             let gp = gamepads.length > 0 ? gamepads[0] : null;
-            
-            let moveForward = 0; 
+
+            let moveForward = 0;
             let moveStrafe = 0;
-            let turnLeftRight = 0; 
+            let turnLeftRight = 0;
             let firingInput = false;
 
             if (gp && gp.axes && gp.buttons) {
                 document.getElementById('status').innerText = "🎮 LINK ESTABLISHED: " + gp.id.substring(0, 14) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
-                
-                const deadzone = 0.2;
 
+                const deadzone = 0.2;
                 const getAxis = (idx) => (gp.axes && gp.axes.length > idx) ? gp.axes[idx] : 0;
                 const getButton = (idx) => {
                     if (!gp.buttons || gp.buttons.length <= idx) return { pressed: false, value: 0 };
@@ -108,6 +115,7 @@
                     return b ? { pressed: !!b.pressed, value: b.value || 0 } : { pressed: false, value: 0 };
                 };
 
+                // L3 toggle
                 if (getButton(10).pressed) {
                     if (canToggle) {
                         swapSticksToggle = !swapSticksToggle;
@@ -116,10 +124,10 @@
                     }
                 }
 
-                let ax0 = getAxis(0); 
-                let ax1 = getAxis(1); 
-                let ax2 = getAxis(2); 
-                let ax3 = getAxis(3); 
+                let ax0 = getAxis(0);
+                let ax1 = getAxis(1);
+                let ax2 = getAxis(2);
+                let ax3 = getAxis(3);
 
                 if (!swapSticksToggle) {
                     if (Math.abs(ax2) > deadzone) turnLeftRight = ax2;
@@ -139,9 +147,10 @@
                 let valRT = getButton(7).value || (getButton(7).pressed ? 1 : 0);
                 document.getElementById('hud-lt').innerText = valLT.toFixed(2);
                 document.getElementById('hud-rt').innerText = valRT.toFixed(2);
+
                 if (valRT > 0.1) firingInput = true;
 
-                for(let b = 0; b < 4; b++) {
+                for (let b = 0; b < 4; b++) {
                     let activeState = getButton(b).pressed;
                     document.getElementById(`btn-${b}`).innerText = activeState ? "ACTIVE" : "Off";
                     document.getElementById(`btn-${b}`).style.color = activeState ? "#00ffcc" : "#fff";
@@ -157,7 +166,7 @@
                 document.getElementById('status').style.color = "#ffaa00";
             }
 
-            // Keyboard overrides configurations
+            // Keyboard overrides
             if (keys['KeyW']) moveForward = 1.0;
             if (keys['KeyS']) moveForward = -1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -166,11 +175,13 @@
             if (keys['ArrowRight']) turnLeftRight = 1.0;
             if (keys['Space']) firingInput = true;
 
+            // Apply rotation
             if (turnLeftRight !== 0) {
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            let dX = 0; let dY = 0;
+            // Apply movement with simple collision
+            let dX = 0, dY = 0;
             if (moveForward !== 0) {
                 dX += Math.sin(player.angle) * moveForward;
                 dY -= Math.cos(player.angle) * moveForward;
@@ -183,10 +194,95 @@
             if (dX !== 0 || dY !== 0) {
                 let targetX = player.x + dX * player.speed;
                 let targetY = player.y + dY * player.speed;
-
                 if (getMapCell(targetX, player.y) === 0) player.x = targetX;
                 if (getMapCell(player.x, targetY) === 0) player.y = targetY;
             }
 
+            // Fire
             if (firingInput && canFire) {
                 projectiles.push({
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    speed: 0.25,
+                    life: 60
+                });
+                canFire = false;
+                setTimeout(() => { canFire = true; }, 180);
+            }
+        }
+
+        // ==========================================
+        // 3. UPDATE + RENDER
+        // ==========================================
+        function update() {
+            processControls();
+
+            // Move projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.x += Math.sin(p.angle) * p.speed;
+                p.y -= Math.cos(p.angle) * p.speed;
+                p.life--;
+
+                if (p.life <= 0 || getMapCell(p.x, p.y) === 1) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function render() {
+            // Clear
+            ctx.fillStyle = '#02040a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Simple top-down minimap style view (easy to replace with raycaster later)
+            const scale = 32;
+            const offsetX = canvas.width / 2 - player.x * scale;
+            const offsetY = canvas.height / 2 - player.y * scale;
+
+            // Draw map
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    if (map[y * MAP_SIZE + x] === 1) {
+                        ctx.fillStyle = '#1a3a5c';
+                        ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale - 1, scale - 1);
+                    }
+                }
+            }
+
+            // Draw player
+            ctx.fillStyle = '#00ffcc';
+            ctx.beginPath();
+            ctx.arc(offsetX + player.x * scale, offsetY + player.y * scale, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Direction line
+            ctx.strokeStyle = '#00ffcc';
+            ctx.beginPath();
+            ctx.moveTo(offsetX + player.x * scale, offsetY + player.y * scale);
+            ctx.lineTo(
+                offsetX + player.x * scale + Math.sin(player.angle) * 20,
+                offsetY + player.y * scale - Math.cos(player.angle) * 20
+            );
+            ctx.stroke();
+
+            // Draw projectiles
+            ctx.fillStyle = '#ff4444';
+            for (let p of projectiles) {
+                ctx.beginPath();
+                ctx.arc(offsetX + p.x * scale, offsetY + p.y * scale, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
