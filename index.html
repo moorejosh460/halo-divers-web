@@ -3,37 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers Solid Build</title>
+    <title>Halo Divers - Ultimate Stable Engine</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #03070d; font-family: sans-serif; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #02040a; font-family: sans-serif; user-select: none; }
         canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
         #ui { position: absolute; top: 30px; left: 30px; color: #00ffcc; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; z-index: 10; line-height: 1.5; pointer-events: none; }
-        #gamepad-hud { position: absolute; bottom: 30px; left: 30px; background: rgba(5, 15, 30, 0.85); border: 2px solid #00bfff; padding: 15px; border-radius: 6px; color: #fff; font-family: monospace; font-size: 13px; min-width: 320px; box-shadow: 0 0 15px rgba(0, 191, 255, 0.3); z-index: 10; }
-        .hud-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        #gamepad-hud { position: absolute; bottom: 30px; left: 30px; background: rgba(4, 12, 24, 0.9); border: 2px solid #00bfff; padding: 15px; border-radius: 6px; color: #fff; font-family: monospace; font-size: 13px; min-width: 330px; box-shadow: 0 0 20px rgba(0, 191, 255, 0.2); z-index: 10; pointer-events: none; }
+        .hud-row { display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; }
         .active-bind { color: #00ffcc; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        HALO DIVERS: FORTRESS SYSTEM FIXED<br>
-        <span id="status" style="color: #ff3366;">⚠️ MASH ANY CONTROLLER BUTTON & CLICK THE VIEWPORT TO INITIALIZE RUNTIME...</span>
+        HALO DIVERS: 12X TOTAL AUDITED CORE<br>
+        <span id="status" style="color: #ff3366;">⚠️ ACTION REQUIRED: PRESS ANY CONTROLLER BUTTON + CLICK WINDOW TO START...</span>
     </div>
 
-    <!-- Active Hardware Diagnostic Tracking Window -->
+    <!-- Live Diagnostics Panel -->
     <div id="gamepad-hud">
-        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #00bfff; padding-bottom: 4px;">🎮 LIVE HARDWARE INPUT PROFILE</div>
+        <div style="color: #00bfff; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #00bfff; padding-bottom: 4px;">🎮 HARDWARE MATRIX DESKTOP</div>
         <div class="hud-row"><span>LS (Move / Strafe):</span> <span id="hud-ls" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RS (Look Around):</span> <span id="hud-rs" class="active-bind">X: 0.00 | Y: 0.00</span></div>
         <div class="hud-row"><span>RT (Right Trigger - Shoot):</span> <span id="hud-rt">0.00</span></div>
         <div class="hud-row"><span>LT (Left Trigger - Aim):</span> <span id="hud-lt">0.00</span></div>
-        <div class="hud-row"><span>Face A / Cross (Jump):</span> <span id="btn-0">Off</span></div>
-        <div class="hud-row"><span>Face B / Circle (Crouch):</span> <span id="btn-1">Off</span></div>
-        <div class="hud-row"><span>Face X / Square (Reload):</span> <span id="btn-2">Off</span></div>
-        <div class="hud-row"><span>Face Y / Triangle (Switch):</span> <span id="btn-3">Off</span></div>
-        <div class="hud-row"><span>D-Pad (Up/Dn/Lf/Rt):</span> <span id="hud-dpad">Center</span></div>
-        <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; border-top: 1px dashed #334466; padding-top: 4px;">Press L3 (Left Stick Down Click) or 'T' to swap stick profiles instantly!</div>
+        <div class="hud-row"><span>Face Button A / Cross:</span> <span id="btn-0">Off</span></div>
+        <div class="hud-row"><span>Face Button B / Circle:</span> <span id="btn-1">Off</span></div>
+        <div class="hud-row"><span>Face Button X / Square:</span> <span id="btn-2">Off</span></div>
+        <div class="hud-row"><span>Face Button Y / Triangle:</span> <span id="btn-3">Off</span></div>
+        <div class="hud-row"><span>D-Pad Directional:</span> <span id="hud-dpad">Center</span></div>
+        <div style="font-size: 11px; color: #8fa0ba; margin-top: 6px; padding-top: 4px; text-align: center;">Press L3 (Left Stick Down Click) or 'T' to swap stick profiles on the fly!</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -52,21 +52,19 @@
         resize();
 
         // ==========================================
-        // 1. STRIP-PROOF PROCEDURAL ROOM FORMULAS
+        // 1. PROCEDURAL MAP GENERATOR (CLAMP SECURE)
         // ==========================================
-        const player = { x: 5.0, y: 5.0, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
+        const player = { x: 5.5, y: 5.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
         let canToggle = true;
-        const MAP_SIZE = 16;
+        const MAP_SIZE = 12;
 
-        // Uses mathematical check steps to ensure code transmission cannot drop data arrays
         function getMapCell(x, y) {
-            let floorX = Math.floor(x);
-            let floorY = Math.floor(y);
-            if (floorX <= 0 || floorX >= MAP_SIZE - 1 || floorY <= 0 || floorY >= MAP_SIZE - 1) return 1;
-            // Carves four distinct decorative target pillars into the arena space
-            if ((floorX === 4 || floorX === 11) && (floorY === 4 || floorY === 11)) return 1;
+            let cx = Math.floor(x);
+            let cy = Math.floor(y);
+            if (cx <= 0 || cx >= MAP_SIZE - 1 || cy <= 0 || cy >= MAP_SIZE - 1) return 1;
+            if ((cx === 3 || cx === 8) && (cy === 3 || cy === 8)) return 1;
             return 0;
         }
 
@@ -90,30 +88,40 @@
         }
 
         // ==========================================
-        // 2. STABLE AXIS HARDWARE DECODER
+        // 2. UNCRASHABLE DEEP AUTOMATED GAMEPAD ENGINE
         // ==========================================
         function processControls() {
             if (!engineActive) return;
 
-            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let gp = null;
+            let rawBuffer = navigator.getGamepads ? navigator.getGamepads() : null;
+            let gamepads = [];
+            if (rawBuffer) {
+                for (let idx = 0; idx < rawBuffer.length; idx++) {
+                    if (rawBuffer[idx]) gamepads.push(rawBuffer[idx]);
+                }
+            }
+            
+            let gp = gamepads.length > 0 ? gamepads[0] : null;
             
             let moveForward = 0; 
             let moveStrafe = 0;
             let turnLeftRight = 0; 
             let firingInput = false;
 
-            for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) { gp = gamepads[i]; break; }
-            }
-
             if (gp && gp.axes && gp.buttons) {
-                document.getElementById('status').innerText = "🎮 CONTROLLER SYNCHRONIZED: " + gp.id.substring(0, 12) + "...";
+                document.getElementById('status').innerText = "🎮 LINK ESTABLISHED: " + gp.id.substring(0, 14) + "...";
                 document.getElementById('status').style.color = "#00ffcc";
                 
                 const deadzone = 0.2;
 
-                if (gp.buttons.length > 10 && gp.buttons[10] && gp.buttons[10].pressed) {
+                const getAxis = (idx) => (gp.axes && gp.axes.length > idx) ? gp.axes[idx] : 0;
+                const getButton = (idx) => {
+                    if (!gp.buttons || gp.buttons.length <= idx) return { pressed: false, value: 0 };
+                    let b = gp.buttons[idx];
+                    return b ? { pressed: !!b.pressed, value: b.value || 0 } : { pressed: false, value: 0 };
+                };
+
+                if (getButton(10).pressed) {
                     if (canToggle) {
                         swapSticksToggle = !swapSticksToggle;
                         canToggle = false;
@@ -121,21 +129,18 @@
                     }
                 }
 
-                // Explicit index array lookups patched securely to prevent rendering execution loop crashes
-                let ax0 = gp.axes.length > 0 ? gp.axes[0] : 0; 
-                let ax1 = gp.axes.length > 1 ? gp.axes[1] : 0; 
-                let ax2 = gp.axes.length > 2 ? gp.axes[2] : 0; 
-                let ax3 = gp.axes.length > 3 ? gp.axes[3] : 0; 
+                let ax0 = getAxis(0); 
+                let ax1 = getAxis(1); 
+                let ax2 = getAxis(2); 
+                let ax3 = getAxis(3); 
 
                 if (!swapSticksToggle) {
-                    // Modern Stick Profiles: Left Stick Moves/Strafes | Right Stick Views Around
                     if (Math.abs(ax2) > deadzone) turnLeftRight = ax2;
                     if (Math.abs(ax1) > deadzone) moveForward = -ax1;
                     if (Math.abs(ax0) > deadzone) moveStrafe = -ax0;
                     document.getElementById('hud-ls').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
                     document.getElementById('hud-rs').innerText = `X: ${ax2.toFixed(2)} | Y: ${ax3.toFixed(2)}`;
                 } else {
-                    // Swap Override Profile Strategy
                     if (Math.abs(ax0) > deadzone) turnLeftRight = ax0;
                     if (Math.abs(ax3) > deadzone) moveForward = -ax3;
                     if (Math.abs(ax2) > deadzone) moveStrafe = -ax2;
@@ -143,30 +148,25 @@
                     document.getElementById('hud-rs').innerText = `X: ${ax0.toFixed(2)} | Y: ${ax1.toFixed(2)}`;
                 }
 
-                // Read pressure configurations for triggers
-                let valLT = gp.buttons.length > 6 && gp.buttons[6] ? (gp.buttons[6].value !== undefined ? gp.buttons[6].value : (gp.buttons[6].pressed ? 1 : 0)) : 0;
-                let valRT = gp.buttons.length > 7 && gp.buttons[7] ? (gp.buttons[7].value !== undefined ? gp.buttons[7].value : (gp.buttons[7].pressed ? 1 : 0)) : 0;
+                let valLT = getButton(6).value || (getButton(6).pressed ? 1 : 0);
+                let valRT = getButton(7).value || (getButton(7).pressed ? 1 : 0);
                 document.getElementById('hud-lt').innerText = valLT.toFixed(2);
                 document.getElementById('hud-rt').innerText = valRT.toFixed(2);
                 if (valRT > 0.1) firingInput = true;
 
-                // Bind all core action button states
-                for(let b=0; b<4; b++) {
-                    if(gp.buttons.length > b && gp.buttons[b]) {
-                        document.getElementById(`btn-${b}`).innerText = gp.buttons[b].pressed ? "ACTIVE" : "Off";
-                        document.getElementById(`btn-${b}`).style.color = gp.buttons[b].pressed ? "#00ffcc" : "#fff";
-                    }
+                for(let b = 0; b < 4; b++) {
+                    let activeState = getButton(b).pressed;
+                    document.getElementById(`btn-${b}`).innerText = activeState ? "ACTIVE" : "Off";
+                    document.getElementById(`btn-${b}`).style.color = activeState ? "#00ffcc" : "#fff";
                 }
 
-                // Bind D-pad directional parameters
-                let dpUp = gp.buttons.length > 12 && gp.buttons[12] && gp.buttons[12].pressed;
-                let dpDn = gp.buttons.length > 13 && gp.buttons[13] && gp.buttons[13].pressed;
-                let dpLf = gp.buttons.length > 14 && gp.buttons[14] && gp.buttons[14].pressed;
-                let dpRt = gp.buttons.length > 15 && gp.buttons[15] && gp.buttons[15].pressed;
-                document.getElementById('hud-dpad').innerText = dpUp ? "UP" : dpDn ? "DOWN" : dpLf ? "LEFT" : dpRt ? "RIGHT" : "Center";
+                let dUp = getButton(12).pressed;
+                let dDn = getButton(13).pressed;
+                let dLf = getButton(14).pressed;
+                let dRt = getButton(15).pressed;
+                document.getElementById('hud-dpad').innerText = dUp ? "UP" : dDn ? "DOWN" : dLf ? "LEFT" : dRt ? "RIGHT" : "Center";
             }
 
-            // Keyboard Simulator Configuration Mapping Backups
             if (keys['KeyW']) moveForward = 1.0;
             if (keys['KeyS']) moveForward = -1.0;
             if (keys['KeyA']) moveStrafe = -1.0;
@@ -183,3 +183,20 @@
             if (moveForward !== 0) {
                 dX += Math.sin(player.angle) * moveForward;
                 dY -= Math.cos(player.angle) * moveForward;
+            }
+            if (moveStrafe !== 0) {
+                dX -= Math.cos(player.angle) * moveStrafe;
+                dY -= Math.sin(player.angle) * moveStrafe;
+            }
+
+            if (dX !== 0 || dY !== 0) {
+                let targetX = player.x + dX * player.speed;
+                let targetY = player.y + dY * player.speed;
+
+                if (getMapCell(targetX, player.y) === 0) player.x = targetX;
+                if (getMapCell(player.x, targetY) === 0) player.y = targetY;
+            }
+
+            if (firingInput && canFire) {
+                projectiles.push({
+                    x: player.x,
