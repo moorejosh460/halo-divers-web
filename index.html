@@ -16,7 +16,7 @@
     <div id="ui">
         HALO DIVERS: FORTRESS SYSTEM FIXED<br>
         <span id="status" style="color: #ff3366;">⚠️ WAITING FOR INPUT SIGNAL...</span><br>
-        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look | Right Stick: Move | Right Trigger (RT): Shoot</span>
+        <span id="debug" style="color: #8fa0ba; font-size: 16px;">Left Stick: Look (L/R) | Right Stick: Move (F/B) & Strafe (L/R) | RT Trigger: Shoot</span>
     </div>
     <canvas id="gameCanvas"></canvas>
 
@@ -32,13 +32,13 @@
         resize();
 
         // ==========================================
-        // 1. GAME DATA & FLATTENED GRID MATRIX MAP
+        // 1. GAME DATA & VALIDATED SOLID MAP MATRIX
         // ==========================================
-        const player = { x: 3.5, y: 3.5, angle: 0.0, speed: 0.04, rotSpeed: 0.03 };
+        const player = { x: 2.5, y: 2.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
 
-        // Clean layout array mapping to guarantee cross-browser compatibility
+        // Fully declared 10x10 grid with physical interior geometry structures
         const map = [,
  ,
  ,
@@ -58,13 +58,14 @@
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         // ==========================================
-        // 2. STABLE GAMEPAD DETECTION ROUTER
+        // 2. HARDWARE GAMEPAD ROUTER (DASH REMAPPED)
         // ==========================================
         function processControls() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
             
             let moveForward = 0; 
+            let moveStrafe = 0;
             let turnLeftRight = 0; 
             let firingInput = false;
 
@@ -78,18 +79,22 @@
                 
                 const deadzone = 0.2;
 
-                // Standard modern dual stick axis lookups
-                // Axis 0 = Left Stick Horizontal (LOOK)
+                // LOOK STICK: Left Stick Horizontal (Axis 0)
                 if (Math.abs(gp.axes[0]) > deadzone) {
                     turnLeftRight = gp.axes[0];
                 }
 
-                // Axis 3 = Right Stick Vertical (MOVE Forward/Backward)
+                // MOVE STICK: Right Stick Vertical (Axis 3)
                 if (Math.abs(gp.axes[3]) > deadzone) {
                     moveForward = gp.axes[3]; 
                 }
 
-                // Index 7 = Standard Right Trigger (RT / R2) Button mapping
+                // STRAFE STICK: Right Stick Horizontal (Axis 2)
+                if (Math.abs(gp.axes[2]) > deadzone) {
+                    moveStrafe = gp.axes[2];
+                }
+
+                // SHOOT BUTTON: Right Trigger / RT (Index 7)
                 if (gp.buttons[7] && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
                     firingInput = true;
                 }
@@ -98,45 +103,63 @@
                 document.getElementById('status').style.color = "#ffaa00";
             }
 
-            // Keyboard overrides 
+            // Keyboard alternative map routing
             if (keys['KeyW'] || keys['ArrowUp']) moveForward = -1.0;
             if (keys['KeyS'] || keys['ArrowDown']) moveForward = 1.0;
-            if (keys['KeyA'] || keys['ArrowLeft']) turnLeftRight = -1.0;
-            if (keys['KeyD'] || keys['ArrowRight']) turnLeftRight = 1.0;
-            if (keys['Space']) firingInput = true;
+            if (keys['KeyA']) moveStrafe = -1.0;
+            if (keys['KeyD']) moveStrafe = 1.0;
+            if (keys['ArrowLeft']) turnLeftRight = -1.0;
+            if (keys['ArrowRight']) turnLeftRight = 1.0;
+            if (keys['Space'] || keys['ControlLeft']) firingInput = true;
 
-            // Apply turn calculations
+            // Apply viewing rotation adjustments
             if (turnLeftRight !== 0) {
                 player.angle += turnLeftRight * player.rotSpeed;
             }
 
-            // Apply velocity transformation with boundary limit checks
-            if (moveForward !== 0) {
-                let nextX = player.x - Math.sin(player.angle) * (moveForward * player.speed);
-                let nextY = player.y + Math.cos(player.angle) * (moveForward * player.speed);
+            // Calculate directional vectors based on forward and strafe values
+            let dX = 0;
+            let dY = 0;
 
-                let checkY = Math.floor(nextY);
-                let checkX = Math.floor(nextX);
-                
-                if (checkY >= 0 && checkY < MAP_SIZE && checkX >= 0 && checkX < MAP_SIZE) {
-                    if (map[checkY][checkX] === 0) {
-                        player.x = nextX;
-                        player.y = nextY;
+            if (moveForward !== 0) {
+                dX -= Math.sin(player.angle) * moveForward;
+                dY += Math.cos(player.angle) * moveForward;
+            }
+            if (moveStrafe !== 0) {
+                dX += Math.cos(player.angle) * moveStrafe;
+                dY += Math.sin(player.angle) * moveStrafe;
+            }
+
+            // Apply movement velocity vector using progressive wall sliding calculations
+            if (dX !== 0 || dY !== 0) {
+                let targetX = player.x + dX * player.speed;
+                let targetY = player.y + dY * player.speed;
+
+                // X-Axis boundary check sliding loop
+                if (targetX >= 0 && targetX < MAP_SIZE) {
+                    if (map[Math.floor(player.y)][Math.floor(targetX)] === 0) {
+                        player.x = targetX;
+                    }
+                }
+                // Y-Axis boundary check sliding loop
+                if (targetY >= 0 && targetY < MAP_SIZE) {
+                    if (map[Math.floor(targetY)][Math.floor(player.x)] === 0) {
+                        player.y = targetY;
                     }
                 }
             }
 
-            // Projectile spawning handler
+            // Trigger firing calculations
             if (firingInput && canFire) {
                 projectiles.push({
                     x: player.x,
                     y: player.y,
                     dirX: -Math.sin(player.angle),
                     dirY: Math.cos(player.angle),
-                    speed: 0.15
+                    speed: 0.16
                 });
                 canFire = false;
-                setTimeout(() => { canFire = true; }, 200); // 200ms fire rate interval
+                setTimeout(() => { canFire = true; }, 180);
             }
         }
 
@@ -146,7 +169,7 @@
         function update() {
             processControls();
 
-            // Handle projectile tracks
+            // Run physics cycles across active projectles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
@@ -162,13 +185,13 @@
         }
 
         function draw() {
-            // Draw floor/sky space void split backgrounds
-            ctx.fillStyle = '#010307';
+            // Draw floor/sky depth fields
+            ctx.fillStyle = '#02050d';
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
-            ctx.fillStyle = '#060d1a';
+            ctx.fillStyle = '#0b111e';
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            // Raycasting Engine Passes
+            // Raycasting calculation passes
             const FOV = Math.PI / 3;
             const numRays = canvas.width;
             const halfFOV = FOV / 2;
@@ -182,7 +205,7 @@
                 let eyeY = Math.cos(rayAngle);
 
                 while (!hitWall && distance < 16) {
-                    distance += 0.04;
+                    distance += 0.03;
                     let testX = Math.floor(player.x + eyeX * distance);
                     let testY = Math.floor(player.y + eyeY * distance);
 
@@ -194,56 +217,31 @@
                     }
                 }
 
-                // Fish-eye lens distortion fix formula
+                // Fish-eye lens projection corrections
                 let correctedDist = distance * Math.cos(rayAngle - player.angle);
                 if (correctedDist < 0.1) correctedDist = 0.1; 
                 
                 let ceiling = (canvas.height / 2.0) - canvas.height / correctedDist;
                 let floor = canvas.height - ceiling;
 
-                // Depth-tinted neon blue walls shading
-                let intensity = Math.max(0, 255 - (correctedDist * 22));
-                ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.4)}, ${intensity})`;
+                // Calculate visual light falloff on blue walls
+                let intensity = Math.max(0, 255 - (correctedDist * 24));
+                ctx.strokeStyle = `rgb(0, ${Math.floor(intensity * 0.45)}, ${intensity})`;
                 ctx.beginPath();
                 ctx.moveTo(i, ceiling);
                 ctx.lineTo(i, floor);
                 ctx.stroke();
             }
 
-            // Radar Mini-Map Render (Top-Right)
+            // High Contrast HUD Radar Minimap (Top-Right)
             const tile = 12;
             const offsetLeft = canvas.width - 150;
             const offsetTop = 30;
 
             for (let y = 0; y < MAP_SIZE; y++) {
                 for (let x = 0; x < MAP_SIZE; x++) {
-                    ctx.fillStyle = map[y][x] === 1 ? '#00bfff' : '#091224';
+                    ctx.fillStyle = map[y][x] === 1 ? '#00bfff' : '#0d182e';
                     ctx.fillRect(offsetLeft + x * tile, offsetTop + y * tile, tile - 1, tile - 1);
                 }
             }
 
-            // Projectiles layer
-            ctx.fillStyle = '#ffff00';
-            projectiles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(offsetLeft + p.x * tile, offsetTop + p.y * tile, 2.5, 0, 2 * Math.PI);
-                ctx.fill();
-            });
-
-            // Player node indicator layer
-            ctx.fillStyle = '#ff3366';
-            ctx.beginPath();
-            ctx.arc(offsetLeft + player.x * tile, offsetTop + player.y * tile, 4, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        gameLoop();
-    </script>
-</body>
-</html>
