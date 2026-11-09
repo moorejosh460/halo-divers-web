@@ -32,14 +32,14 @@
         resize();
 
         // ==========================================
-        // 1. GAME DATA & VALIDATED SOLID MAP MATRIX
+        // 1. STRIP-PROOF MAP GRID PACKING
         // ==========================================
         const player = { x: 2.5, y: 2.5, angle: 0.0, speed: 0.06, rotSpeed: 0.04 };
         const projectiles = [];
         let canFire = true;
 
-        // Fully declared 10x10 grid with physical interior geometry structures
-        const map = [,
+        // Represented as a flat layout sequence to protect data structure integrity
+        const rawLayout = [,
  ,
  ,
  ,
@@ -48,8 +48,10 @@
  ,
  ,
  ,
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            [1,1,1,1,1,1,1,1,1,1]
         ];
+        
+        const map = rawLayout;
         const MAP_SIZE = 10;
 
         // Fallback input trackers
@@ -80,22 +82,22 @@
                 const deadzone = 0.2;
 
                 // LOOK STICK: Left Stick Horizontal (Axis 0)
-                if (Math.abs(gp.axes[0]) > deadzone) {
+                if (gp.axes.length > 0 && Math.abs(gp.axes[0]) > deadzone) {
                     turnLeftRight = gp.axes[0];
                 }
 
                 // MOVE STICK: Right Stick Vertical (Axis 3)
-                if (Math.abs(gp.axes[3]) > deadzone) {
+                if (gp.axes.length > 3 && Math.abs(gp.axes[3]) > deadzone) {
                     moveForward = gp.axes[3]; 
                 }
 
                 // STRAFE STICK: Right Stick Horizontal (Axis 2)
-                if (Math.abs(gp.axes[2]) > deadzone) {
+                if (gp.axes.length > 2 && Math.abs(gp.axes[2]) > deadzone) {
                     moveStrafe = gp.axes[2];
                 }
 
                 // SHOOT BUTTON: Right Trigger / RT (Index 7)
-                if (gp.buttons[7] && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
+                if (gp.buttons.length > 7 && (gp.buttons[7].pressed || gp.buttons[7].value > 0.1)) {
                     firingInput = true;
                 }
             } else {
@@ -110,7 +112,7 @@
             if (keys['KeyD']) moveStrafe = 1.0;
             if (keys['ArrowLeft']) turnLeftRight = -1.0;
             if (keys['ArrowRight']) turnLeftRight = 1.0;
-            if (keys['Space'] || keys['ControlLeft']) firingInput = true;
+            if (keys['Space']) firingInput = true;
 
             // Apply viewing rotation adjustments
             if (turnLeftRight !== 0) {
@@ -169,7 +171,7 @@
         function update() {
             processControls();
 
-            // Run physics cycles across active projectles
+            // Run physics cycles across active projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 p.x += p.dirX * p.speed;
