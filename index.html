@@ -6,51 +6,48 @@
     <title>Halo Divers</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #02040a; font-family: system-ui, sans-serif; user-select: none; }
-        canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; background: #02040a; }
         #ui {
-            position: absolute; top: 16px; left: 16px;
-            color: #00ffcc; font-size: 16px; font-weight: 700;
-            text-shadow: 0 0 8px #000, 2px 2px 4px #000; z-index: 10; line-height: 1.45;
+            position: absolute; top: 14px; left: 14px;
+            color: #00ffcc; font-size: 15px; font-weight: 700;
+            text-shadow: 0 0 6px #000, 1px 1px 3px #000; z-index: 10; line-height: 1.4;
             pointer-events: none;
         }
         #gamepad-hud {
-            position: absolute; bottom: 14px; left: 14px;
-            background: rgba(4,12,24,0.9); border: 1px solid #00bfff;
-            padding: 10px 12px; border-radius: 6px; color: #ddd;
-            font-family: monospace; font-size: 11px; min-width: 270px;
-            box-shadow: 0 0 16px rgba(0,191,255,0.2); z-index: 10;
-            pointer-events: none;
+            position: absolute; bottom: 12px; left: 12px;
+            background: rgba(0,10,20,0.85); border: 1px solid #00bfff;
+            padding: 8px 10px; border-radius: 5px; color: #ccc;
+            font-family: monospace; font-size: 11px; min-width: 250px;
+            z-index: 10; pointer-events: none;
         }
         .hud-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .active-bind { color: #00ffcc; }
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 16px; height: 16px; margin: -8px 0 0 -8px;
+            width: 14px; height: 14px; margin: -7px 0 0 -7px;
             pointer-events: none; z-index: 5;
         }
         #crosshair::before, #crosshair::after {
             content: ''; position: absolute; background: #00ffcc;
-            box-shadow: 0 0 4px #00ffcc;
         }
-        #crosshair::before { width: 2px; height: 16px; left: 7px; }
-        #crosshair::after { width: 16px; height: 2px; top: 7px; }
+        #crosshair::before { width: 2px; height: 14px; left: 6px; }
+        #crosshair::after { width: 14px; height: 2px; top: 6px; }
     </style>
 </head>
 <body>
     <div id="ui">
         HALO DIVERS<br>
-        <span id="status">ENGINE ACTIVE</span><br>
+        <span id="status">LOADING...</span><br>
         HP <span id="hp">100</span> &nbsp; Score <span id="score">0</span> &nbsp; Enemies <span id="enemyCount">0</span>
     </div>
 
     <div id="gamepad-hud">
-        <div style="color:#00bfff;font-weight:bold;margin-bottom:4px;border-bottom:1px solid #00bfff;padding-bottom:2px;">INPUT</div>
+        <div style="color:#00bfff;font-weight:bold;margin-bottom:3px;">INPUT</div>
         <div class="hud-row"><span>LS</span> <span id="hud-ls" class="active-bind">0.00 0.00</span></div>
         <div class="hud-row"><span>RS</span> <span id="hud-rs" class="active-bind">0.00 0.00</span></div>
         <div class="hud-row"><span>RT / LT</span> <span><span id="hud-rt">0.00</span> / <span id="hud-lt">0.00</span></span></div>
-        <div class="hud-row"><span>Face</span> <span id="btns">----</span></div>
-        <div style="font-size:10px;color:#7a8a9a;margin-top:4px;text-align:center;">L3 or T = swap sticks</div>
+        <div style="font-size:10px;color:#678;margin-top:3px;text-align:center;">L3 or T = swap sticks</div>
     </div>
 
     <div id="crosshair"></div>
@@ -72,56 +69,56 @@
 
         // Audio
         const actx = new (window.AudioContext || window.webkitAudioContext)();
-        function tone(freq, type, dur, vol = 0.09) {
-            if (actx.state === 'suspended') actx.resume();
-            const o = actx.createOscillator();
-            const g = actx.createGain();
-            o.type = type;
-            o.frequency.value = freq;
-            g.gain.setValueAtTime(vol, actx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
-            o.connect(g); g.connect(actx.destination);
-            o.start(); o.stop(actx.currentTime + dur);
+        function tone(freq, type, dur, vol = 0.08) {
+            try {
+                if (actx.state === 'suspended') actx.resume();
+                const o = actx.createOscillator();
+                const g = actx.createGain();
+                o.type = type;
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol, actx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+                o.connect(g); g.connect(actx.destination);
+                o.start(); o.stop(actx.currentTime + dur);
+            } catch(e) {}
         }
         const sfx = {
-            shoot: () => { tone(190, 'square', 0.06, 0.07); tone(95, 'sawtooth', 0.1, 0.04); },
-            hit:   () => tone(310, 'triangle', 0.08, 0.1),
-            hurt:  () => tone(80, 'sawtooth', 0.2, 0.12),
-            kill:  () => { tone(240, 'square', 0.12, 0.08); tone(120, 'triangle', 0.25, 0.06); }
+            shoot: () => { tone(180, 'square', 0.06, 0.06); tone(90, 'sawtooth', 0.09, 0.03); },
+            hit:   () => tone(300, 'triangle', 0.07, 0.09),
+            hurt:  () => tone(75, 'sawtooth', 0.18, 0.1),
+            kill:  () => { tone(220, 'square', 0.1, 0.07); tone(110, 'triangle', 0.2, 0.05); }
         };
 
-        // Map – open enough to move and kite
-        const MAP = 18;
+        // Map
+        const MAP = 16;
         const grid = [
-            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-            1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,0,0,1,
-            1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,1,
-            1,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,1,
-            1,0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,1,
-            1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,
-            1,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,1,
-            1,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1,
-            1,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1,
-            1,0,0,0,0,1,1,0,0,1,0,0,1,1,0,0,0,1,
-            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-            1,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0,1,
-            1,0,0,0,1,0,0,1,1,1,1,0,0,1,0,0,0,1,
-            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,
+            1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,
+            1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,
+            1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,
+            1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,
+            1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,
+            1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,
+            1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,
+            1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,
+            1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
         ];
         function cell(x, y) {
-            const cx = Math.floor(x), cy = Math.floor(y);
+            const cx = x | 0, cy = y | 0;
             if (cx < 0 || cy < 0 || cx >= MAP || cy >= MAP) return 1;
             return grid[cy * MAP + cx];
         }
 
         const player = {
-            x: 2.8, y: 2.8, angle: 0.4,
-            speed: 0.072, rot: 0.05,
-            hp: 100, score: 0, radius: 0.2
+            x: 2.5, y: 2.5, angle: 0,
+            speed: 0.07, rot: 0.048,
+            hp: 100, score: 0
         };
 
         const bullets = [];
@@ -132,16 +129,22 @@
         let hurt = 0;
         let moving = false;
 
-        function spawn(n = 7) {
+        function spawn(n = 6) {
             enemies.length = 0;
             for (let i = 0; i < n; i++) {
-                let x, y, t = 0;
+                let x, y, tries = 0;
                 do {
-                    x = 2.5 + Math.random() * (MAP - 5);
-                    y = 2.5 + Math.random() * (MAP - 5);
-                    t++;
-                } while ((cell(x, y) || Math.hypot(x - player.x, y - player.y) < 5.5) && t < 50);
-                enemies.push({ x, y, hp: 32, speed: 0.011 + Math.random() * 0.005, r: 0.28, alive: true });
+                    x = 2 + Math.random() * (MAP - 4);
+                    y = 2 + Math.random() * (MAP - 4);
+                    tries++;
+                } while ((cell(x, y) || Math.hypot(x - player.x, y - player.y) < 4.5) && tries < 40);
+                enemies.push({
+                    x, y,
+                    hp: 30,
+                    speed: 0.012 + Math.random() * 0.005,
+                    r: 0.27,
+                    alive: true
+                });
             }
             document.getElementById('enemyCount').textContent = enemies.filter(e => e.alive).length;
         }
@@ -163,20 +166,20 @@
             let fwd = 0, strafe = 0, turn = 0, fire = false;
 
             if (gp) {
-                document.getElementById('status').textContent = 'PAD: ' + (gp.id || 'connected').substring(0, 16);
+                document.getElementById('status').textContent = 'PAD LINKED';
                 document.getElementById('status').style.color = '#00ffcc';
 
-                const dead = 0.15;
-                const ax = i => gp.axes[i] || 0;
+                const dead = 0.16;
+                const ax = i => (gp.axes && gp.axes[i]) || 0;
                 const btn = i => {
-                    const b = gp.buttons[i];
+                    const b = gp.buttons && gp.buttons[i];
                     return b ? { p: !!b.pressed, v: b.value || 0 } : { p: false, v: 0 };
                 };
 
                 if (btn(10).p && canToggle) {
                     swapSticks = !swapSticks;
                     canToggle = false;
-                    setTimeout(() => canToggle = true, 300);
+                    setTimeout(() => canToggle = true, 280);
                 }
 
                 const a0 = ax(0), a1 = ax(1), a2 = ax(2), a3 = ax(3);
@@ -197,9 +200,6 @@
                 document.getElementById('hud-lt').textContent = btn(6).v.toFixed(2);
                 document.getElementById('hud-rt').textContent = btn(7).v.toFixed(2);
                 if (btn(7).v > 0.12) fire = true;
-
-                const faces = [0,1,2,3].map(i => btn(i).p ? 'ON' : '-').join('');
-                document.getElementById('btns').textContent = faces;
             } else {
                 document.getElementById('status').textContent = 'KEYBOARD';
                 document.getElementById('status').style.color = '#ffaa00';
@@ -228,92 +228,98 @@
             moving = false;
             if (dx || dy) {
                 const len = Math.hypot(dx, dy) || 1;
-                dx = dx / len * player.speed;
-                dy = dy / len * player.speed;
-
-                // Smooth wall sliding
+                dx = (dx / len) * player.speed;
+                dy = (dy / len) * player.speed;
                 if (cell(player.x + dx, player.y) === 0) { player.x += dx; moving = true; }
                 if (cell(player.x, player.y + dy) === 0) { player.y += dy; moving = true; }
             }
 
-            if (moving) bob += 0.25;
-            else bob *= 0.8;
+            if (moving) bob += 0.23;
+            else bob *= 0.82;
 
             if (fire && canFire) {
                 bullets.push({
-                    x: player.x + Math.sin(player.angle) * 0.4,
-                    y: player.y - Math.cos(player.angle) * 0.4,
+                    x: player.x + Math.sin(player.angle) * 0.35,
+                    y: player.y - Math.cos(player.angle) * 0.35,
                     a: player.angle,
-                    spd: 0.36,
-                    life: 48,
-                    dmg: 17
+                    spd: 0.35,
+                    life: 45,
+                    dmg: 16
                 });
-                for (let i = 0; i < 8; i++) {
+                for (let i = 0; i < 6; i++) {
                     particles.push({
-                        x: player.x + Math.sin(player.angle) * 0.5,
-                        y: player.y - Math.cos(player.angle) * 0.5,
-                        vx: Math.sin(player.angle + (Math.random()-0.5)*0.6) * (0.06+Math.random()*0.08),
-                        vy: -Math.cos(player.angle + (Math.random()-0.5)*0.6) * (0.06+Math.random()*0.08),
-                        life: 9 + Math.random()*8,
-                        col: `hsl(${20+Math.random()*30},100%,${55+Math.random()*25}%)`
+                        x: player.x + Math.sin(player.angle) * 0.4,
+                        y: player.y - Math.cos(player.angle) * 0.4,
+                        vx: Math.sin(player.angle + (Math.random()-0.5)*0.5) * (0.05+Math.random()*0.07),
+                        vy: -Math.cos(player.angle + (Math.random()-0.5)*0.5) * (0.05+Math.random()*0.07),
+                        life: 8 + Math.random()*7,
+                        col: `hsl(${25+Math.random()*20},100%,60%)`
                     });
                 }
                 sfx.shoot();
-                recoil = 6;
+                recoil = 5;
                 canFire = false;
-                setTimeout(() => canFire = true, 145);
+                setTimeout(() => canFire = true, 150);
             }
         }
 
-        // Raycaster with better look
+        // Raycaster – forced visible colors
         function rays() {
-            const w = canvas.width, h = canvas.height;
+            const w = canvas.width;
+            const h = canvas.height;
+            if (w < 10 || h < 10) return;
+
             const fov = Math.PI / 3;
-            const n = Math.min(w, 560);
+            const n = Math.min(w, 480);
             const stepA = fov / n;
             const colW = w / n;
-            const bobY = Math.sin(bob) * (moving ? 5 : 0);
+            const bobY = Math.sin(bob) * (moving ? 4 : 0);
 
-            // Floor / ceiling
-            const g = ctx.createLinearGradient(0, 0, 0, h);
-            g.addColorStop(0, '#0b1728');
-            g.addColorStop(0.5, '#060d18');
-            g.addColorStop(1, '#02050c');
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, w, h);
+            // Clear with visible floor/ceiling
+            ctx.fillStyle = '#0a1525';
+            ctx.fillRect(0, 0, w, h / 2);
+            ctx.fillStyle = '#050b14';
+            ctx.fillRect(0, h / 2, w, h / 2);
 
             for (let i = 0; i < n; i++) {
-                const ra = player.angle - fov/2 + i * stepA;
-                let dist = 0, hit = false, side = 0;
-                const sin = Math.sin(ra), cos = Math.cos(ra);
-                const step = 0.017;
+                const ra = player.angle - fov / 2 + i * stepA;
+                let dist = 0;
+                let hit = false;
+                let side = 0;
+                const sin = Math.sin(ra);
+                const cos = Math.cos(ra);
 
-                while (dist < 20 && !hit) {
-                    dist += step;
+                while (dist < 18 && !hit) {
+                    dist += 0.02;
                     const tx = player.x + sin * dist;
                     const ty = player.y - cos * dist;
                     if (cell(tx, ty)) {
                         hit = true;
                         const fx = tx - Math.floor(tx);
-                        side = (fx < 0.02 || fx > 0.98) ? 0 : 1;
+                        side = (fx < 0.03 || fx > 0.97) ? 0 : 1;
                     }
                 }
 
                 const corr = dist * Math.cos(ra - player.angle);
-                const wh = Math.min(h * 1.4 / (corr + 0.0001), h * 2.2);
+                const wh = Math.min(h * 1.3 / (corr + 0.001), h * 1.9);
                 const top = (h - wh) / 2 + bobY;
 
-                const sh = Math.max(0.1, 1 - corr / 12);
+                // BRIGHT walls so they are never black
+                const shade = Math.max(0.25, 1 - corr / 11);
                 let r, g, b;
-                if (side === 0) { r = 55; g = 90; b = 130; }
-                else { r = 35; g = 60; b = 95; }
+                if (side === 0) {
+                    r = 80; g = 140; b = 200;   // brighter blue
+                } else {
+                    r = 50; g = 95; b = 150;
+                }
 
-                // subtle texture stripes
-                const stripe = (Math.floor(player.x + sin * dist) + Math.floor(player.y - cos * dist)) % 2 === 0;
-                if (stripe) { r *= 0.82; g *= 0.82; b *= 0.82; }
+                // stripe for texture
+                if (((Math.floor(player.x + sin * dist) + Math.floor(player.y - cos * dist)) & 1) === 0) {
+                    r = r * 0.8; g = g * 0.8; b = b * 0.8;
+                }
 
-                ctx.fillStyle = `rgb(${r*sh|0},${g*sh|0},${b*sh|0})`;
-                ctx.fillRect(i * colW, top, colW + 1, wh);
+                ctx.fillStyle = `rgb(${(r * shade)|0},${(g * shade)|0},${(b * shade)|0})`;
+                ctx.fillRect(i * colW, top, colW + 1.5, wh);
             }
         }
 
@@ -329,12 +335,12 @@
                 b.life--;
 
                 if (b.life <= 0 || cell(b.x, b.y)) {
-                    for (let k = 0; k < 5; k++) {
+                    for (let k = 0; k < 4; k++) {
                         particles.push({
                             x: b.x, y: b.y,
-                            vx: (Math.random()-0.5)*0.1,
-                            vy: (Math.random()-0.5)*0.1,
-                            life: 8+Math.random()*8,
+                            vx: (Math.random()-0.5)*0.09,
+                            vy: (Math.random()-0.5)*0.09,
+                            life: 7+Math.random()*6,
                             col: '#ff6622'
                         });
                     }
@@ -344,15 +350,15 @@
 
                 for (const e of enemies) {
                     if (!e.alive) continue;
-                    if (Math.hypot(b.x - e.x, b.y - e.y) < e.r + 0.1) {
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < e.r + 0.12) {
                         e.hp -= b.dmg;
                         sfx.hit();
-                        for (let k = 0; k < 7; k++) {
+                        for (let k = 0; k < 6; k++) {
                             particles.push({
                                 x: e.x, y: e.y,
-                                vx: (Math.random()-0.5)*0.14,
-                                vy: (Math.random()-0.5)*0.14,
-                                life: 12+Math.random()*12,
+                                vx: (Math.random()-0.5)*0.12,
+                                vy: (Math.random()-0.5)*0.12,
+                                life: 10+Math.random()*10,
                                 col: '#ff2030'
                             });
                         }
@@ -361,4 +367,143 @@
                             player.score += 100;
                             sfx.kill();
                             document.getElementById('score').textContent = player.score;
-                            
+                            document.getElementById('enemyCount').textContent = enemies.filter(en => en.alive).length;
+                        }
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            // Enemies
+            for (const e of enemies) {
+                if (!e.alive) continue;
+                const dx = player.x - e.x;
+                const dy = player.y - e.y;
+                const dist = Math.hypot(dx, dy) || 0.001;
+                const stop = 0.78;
+
+                if (dist > stop) {
+                    const mx = (dx / dist) * e.speed;
+                    const my = (dy / dist) * e.speed;
+                    if (cell(e.x + mx, e.y) === 0) e.x += mx;
+                    if (cell(e.x, e.y + my) === 0) e.y += my;
+                } else {
+                    const push = (stop - dist) * 0.3;
+                    e.x -= (dx / dist) * push;
+                    e.y -= (dy / dist) * push;
+                }
+
+                if (dist < 0.6) {
+                    player.hp = Math.max(0, player.hp - 0.3);
+                    hurt = 5;
+                    if (Math.random() < 0.03) sfx.hurt();
+                    document.getElementById('hp').textContent = Math.ceil(player.hp);
+
+                    const psh = 0.025;
+                    if (cell(player.x - (dx/dist)*psh, player.y) === 0) player.x -= (dx/dist)*psh;
+                    if (cell(player.x, player.y - (dy/dist)*psh) === 0) player.y -= (dy/dist)*psh;
+                }
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            if (hurt > 0) hurt--;
+
+            if (enemies.every(e => !e.alive)) {
+                player.score += 250;
+                document.getElementById('score').textContent = player.score;
+                spawn(6 + Math.floor(player.score / 500));
+            }
+        }
+
+        function draw() {
+            rays();
+
+            const w = canvas.width, h = canvas.height;
+            const fov = Math.PI / 3;
+            const bobY = Math.sin(bob) * (moving ? 4 : 0);
+
+            // Enemies
+            const list = enemies.filter(e => e.alive).map(e => {
+                const dx = e.x - player.x, dy = e.y - player.y;
+                const dist = Math.hypot(dx, dy);
+                let ang = Math.atan2(dx, -dy) - player.angle;
+                while (ang > Math.PI) ang -= Math.PI * 2;
+                while (ang < -Math.PI) ang += Math.PI * 2;
+                return { e, dist, ang };
+            }).filter(o => Math.abs(o.ang) < fov / 1.5).sort((a,b) => b.dist - a.dist);
+
+            for (const { e, dist, ang } of list) {
+                if (dist < 0.3) continue;
+                const size = Math.min(h * 0.95 / dist, h * 1.6);
+                const sx = w/2 + (ang / (fov/2)) * (w/2) - size/2;
+                const sy = (h - size)/2 + bobY;
+
+                ctx.fillStyle = `rgb(${180},${40},${40})`;
+                ctx.fillRect(sx, sy, size, size);
+                ctx.fillStyle = '#ff0';
+                ctx.fillRect(sx + size*0.2, sy + size*0.2, size*0.14, size*0.14);
+                ctx.fillRect(sx + size*0.66, sy + size*0.2, size*0.14, size*0.14);
+            }
+
+            // Particles
+            for (const p of particles) {
+                const dx = p.x - player.x, dy = p.y - player.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 12) continue;
+                let ang = Math.atan2(dx, -dy) - player.angle;
+                while (ang > Math.PI) ang -= Math.PI * 2;
+                while (ang < -Math.PI) ang += Math.PI * 2;
+                if (Math.abs(ang) > fov / 1.5) continue;
+
+                const sz = Math.max(2, 7 / dist);
+                const sx = w/2 + (ang / (fov/2)) * (w/2);
+                const sy = h/2 + bobY;
+                ctx.globalAlpha = Math.min(1, p.life / 10);
+                ctx.fillStyle = p.col;
+                ctx.beginPath();
+                ctx.arc(sx, sy, sz, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+
+            if (hurt > 0) {
+                ctx.fillStyle = `rgba(255,20,20,${hurt * 0.05})`;
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            // Weapon
+            const wr = recoil * 2.5;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(w*0.37, h*0.74 + bobY*0.3 + wr, w*0.26, h*0.26);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(w*0.41, h*0.70 + bobY*0.3 + wr, w*0.18, h*0.06);
+        }
+
+        function loop() {
+            try {
+                update();
+                draw();
+            } catch (err) {
+                document.getElementById('status').textContent = 'ERR: ' + err.message;
+                document.getElementById('status').style.color = '#f55';
+            }
+            requestAnimationFrame(loop);
+        }
+
+        canvas.addEventListener('click', () => {
+            if (actx.state === 'suspended') actx.resume();
+        });
+
+        document.getElementById('status').textContent = 'READY';
+        loop();
+    </script>
+</body>
+</html>
