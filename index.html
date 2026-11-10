@@ -3,52 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halo Divers</title>
+    <title>Halo Divers - Borderlands Style</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; user-select: none; }
-        canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; background: #02040a; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0a0a0a; font-family: system-ui, sans-serif; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; background: #111; }
         #ui {
             position: absolute; top: 14px; left: 14px;
-            color: #00ffcc; font-size: 15px; font-weight: 700;
-            text-shadow: 0 0 8px #000, 1px 1px 3px #000; z-index: 10; line-height: 1.4;
-            pointer-events: none;
+            color: #ffe600; font-size: 16px; font-weight: 800;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+            z-index: 10; line-height: 1.4; pointer-events: none;
+            letter-spacing: 0.5px;
         }
         #gamepad-hud {
             position: absolute; bottom: 12px; left: 12px;
-            background: rgba(0,12,22,0.88); border: 1px solid #00bfff;
-            padding: 8px 10px; border-radius: 5px; color: #ccc;
+            background: rgba(20,10,0,0.9); border: 3px solid #ffe600;
+            padding: 8px 10px; border-radius: 0; color: #eee;
             font-family: monospace; font-size: 11px; min-width: 250px;
             z-index: 10; pointer-events: none;
+            box-shadow: 4px 4px 0 #000;
         }
         .hud-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .active-bind { color: #00ffcc; }
+        .active-bind { color: #ffe600; font-weight: bold; }
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 14px; height: 14px; margin: -7px 0 0 -7px;
+            width: 18px; height: 18px; margin: -9px 0 0 -9px;
             pointer-events: none; z-index: 5;
         }
         #crosshair::before, #crosshair::after {
-            content: ''; position: absolute; background: #00ffcc;
-            box-shadow: 0 0 4px #00ffcc;
+            content: ''; position: absolute; background: #ffe600;
+            box-shadow: 0 0 0 1px #000;
         }
-        #crosshair::before { width: 2px; height: 14px; left: 6px; }
-        #crosshair::after { width: 14px; height: 2px; top: 6px; }
+        #crosshair::before { width: 2px; height: 18px; left: 8px; }
+        #crosshair::after { width: 18px; height: 2px; top: 8px; }
     </style>
 </head>
 <body>
     <div id="ui">
         HALO DIVERS<br>
         <span id="status">READY</span><br>
-        HP <span id="hp">100</span> &nbsp; Score <span id="score">0</span> &nbsp; Enemies <span id="enemyCount">0</span>
+        HP <span id="hp">100</span> &nbsp; SCORE <span id="score">0</span> &nbsp; ENEMIES <span id="enemyCount">0</span>
     </div>
 
     <div id="gamepad-hud">
-        <div style="color:#00bfff;font-weight:bold;margin-bottom:3px;">INPUT</div>
+        <div style="color:#ffe600;font-weight:bold;margin-bottom:3px;border-bottom:2px solid #ffe600;padding-bottom:2px;">INPUT</div>
         <div class="hud-row"><span>LS</span> <span id="hud-ls" class="active-bind">0.00 0.00</span></div>
         <div class="hud-row"><span>RS</span> <span id="hud-rs" class="active-bind">0.00 0.00</span></div>
         <div class="hud-row"><span>RT / LT</span> <span><span id="hud-rt">0.00</span> / <span id="hud-lt">0.00</span></span></div>
-        <div style="font-size:10px;color:#678;margin-top:3px;text-align:center;">L3 or T = swap sticks</div>
+        <div style="font-size:10px;color:#aaa;margin-top:3px;text-align:center;">L3 or T = swap sticks</div>
     </div>
 
     <div id="crosshair"></div>
@@ -168,7 +170,7 @@
 
             if (gp) {
                 document.getElementById('status').textContent = 'PAD LINKED';
-                document.getElementById('status').style.color = '#00ffcc';
+                document.getElementById('status').style.color = '#ffe600';
 
                 const dead = 0.16;
                 const ax = i => (gp.axes && gp.axes[i]) || 0;
@@ -254,7 +256,7 @@
                         vx: Math.sin(player.angle + (Math.random()-0.5)*0.55) * (0.06+Math.random()*0.08),
                         vy: -Math.cos(player.angle + (Math.random()-0.5)*0.55) * (0.06+Math.random()*0.08),
                         life: 8 + Math.random()*8,
-                        col: `hsl(${20+Math.random()*30},100%,${55+Math.random()*25}%)`
+                        col: `hsl(${40+Math.random()*30},100%,55%)`
                     });
                 }
                 sfx.shoot();
@@ -264,31 +266,35 @@
             }
         }
 
-        // ========== UPGRADED RAYCASTER ==========
+        // ========== BORDERLANDS-STYLE RAYCASTER ==========
         function rays() {
             const w = canvas.width;
             const h = canvas.height;
             if (w < 10 || h < 10) return;
 
             const fov = Math.PI / 3;
-            const n = Math.min(w, 520);
+            const n = Math.min(w, 500);
             const stepA = fov / n;
             const colW = w / n;
             const bobY = Math.sin(bob) * (moving ? 4.5 : 0);
 
-            // Ceiling
-            const ceilGrad = ctx.createLinearGradient(0, 0, 0, h/2);
-            ceilGrad.addColorStop(0, '#0d1c30');
-            ceilGrad.addColorStop(1, '#071020');
-            ctx.fillStyle = ceilGrad;
+            // Flat comic ceiling
+            ctx.fillStyle = '#1a2a3a';
             ctx.fillRect(0, 0, w, h/2);
 
-            // Floor
-            const floorGrad = ctx.createLinearGradient(0, h/2, 0, h);
-            floorGrad.addColorStop(0, '#0a1525');
-            floorGrad.addColorStop(1, '#03060c');
-            ctx.fillStyle = floorGrad;
+            // Flat comic floor
+            ctx.fillStyle = '#2a1a10';
             ctx.fillRect(0, h/2, w, h/2);
+
+            // Simple floor hatching
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 1;
+            for (let y = h/2; y < h; y += 18) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
 
             for (let i = 0; i < n; i++) {
                 const ra = player.angle - fov/2 + i * stepA;
@@ -299,13 +305,13 @@
                 const cos = Math.cos(ra);
 
                 while (dist < 18 && !hit) {
-                    dist += 0.018;
+                    dist += 0.02;
                     const tx = player.x + sin * dist;
                     const ty = player.y - cos * dist;
                     if (cell(tx, ty)) {
                         hit = true;
                         const fx = tx - Math.floor(tx);
-                        side = (fx < 0.025 || fx > 0.975) ? 0 : 1;
+                        side = (fx < 0.03 || fx > 0.97) ? 0 : 1;
                     }
                 }
 
@@ -313,35 +319,41 @@
                 const wh = Math.min(h * 1.35 / (corr + 0.001), h * 2);
                 const top = (h - wh) / 2 + bobY;
 
-                const shade = Math.max(0.22, 1 - corr / 12);
+                // Cel-shaded wall colors (Borderlands bold palette)
+                const shade = Math.max(0.35, 1 - corr / 10);
                 let r, g, b;
                 if (side === 0) {
-                    r = 70; g = 130; b = 190;
+                    r = 60; g = 110; b = 160;          // steel blue
                 } else {
-                    r = 45; g = 90; b = 140;
+                    r = 90; g = 70; b = 50;            // dirty brown
                 }
 
-                // Metal panel texture
-                const tex = Math.floor((player.x + sin * dist) * 4) + Math.floor((player.y - cos * dist) * 4);
-                if (tex % 3 === 0) {
-                    r *= 0.75; g *= 0.75; b *= 0.75;
-                } else if (tex % 3 === 1) {
-                    r *= 1.1; g *= 1.1; b *= 1.1;
+                // Flat cel bands
+                const band = Math.floor(shade * 4) / 4;
+                r = (r * band) | 0;
+                g = (g * band) | 0;
+                b = (b * band) | 0;
+
+                // Main wall fill
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(i * colW, top, colW + 1.5, wh);
+
+                // Thick black outline on wall edges (comic look)
+                if (i === 0 || i === n-1 || (i % 8 === 0)) {
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(i * colW, top, 2, wh);
                 }
 
-                ctx.fillStyle = `rgb(${(r*shade)|0},${(g*shade)|0},${(b*shade)|0})`;
-                ctx.fillRect(i * colW, top, colW + 1.2, wh);
-
-                // Panel lines
-                ctx.fillStyle = `rgba(0,0,0,${0.25 * shade})`;
-                ctx.fillRect(i * colW, top + wh * 0.28, colW + 1.2, wh * 0.06);
-                ctx.fillRect(i * colW, top + wh * 0.65, colW + 1.2, wh * 0.04);
+                // Horizontal comic panel lines
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(i * colW, top + wh * 0.25, colW + 1.5, 3);
+                ctx.fillRect(i * colW, top + wh * 0.6, colW + 1.5, 2);
             }
 
-            // Vignette
-            const vig = ctx.createRadialGradient(w/2, h/2, h*0.3, w/2, h/2, h*0.75);
+            // Strong vignette
+            const vig = ctx.createRadialGradient(w/2, h/2, h*0.25, w/2, h/2, h*0.8);
             vig.addColorStop(0, 'rgba(0,0,0,0)');
-            vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+            vig.addColorStop(1, 'rgba(0,0,0,0.55)');
             ctx.fillStyle = vig;
             ctx.fillRect(0, 0, w, h);
         }
@@ -358,13 +370,13 @@
                 b.life--;
 
                 if (b.life <= 0 || cell(b.x, b.y)) {
-                    for (let k = 0; k < 5; k++) {
+                    for (let k = 0; k < 6; k++) {
                         particles.push({
                             x: b.x, y: b.y,
-                            vx: (Math.random()-0.5)*0.1,
-                            vy: (Math.random()-0.5)*0.1,
-                            life: 8+Math.random()*7,
-                            col: '#ff6622'
+                            vx: (Math.random()-0.5)*0.12,
+                            vy: (Math.random()-0.5)*0.12,
+                            life: 9+Math.random()*8,
+                            col: '#ffaa00'
                         });
                     }
                     bullets.splice(i, 1);
@@ -376,13 +388,13 @@
                     if (Math.hypot(b.x - e.x, b.y - e.y) < e.r + 0.12) {
                         e.hp -= b.dmg;
                         sfx.hit();
-                        for (let k = 0; k < 7; k++) {
+                        for (let k = 0; k < 8; k++) {
                             particles.push({
                                 x: e.x, y: e.y,
-                                vx: (Math.random()-0.5)*0.13,
-                                vy: (Math.random()-0.5)*0.13,
-                                life: 11+Math.random()*11,
-                                col: '#ff2030'
+                                vx: (Math.random()-0.5)*0.15,
+                                vy: (Math.random()-0.5)*0.15,
+                                life: 12+Math.random()*12,
+                                col: '#ff2200'
                             });
                         }
                         if (e.hp <= 0) {
@@ -454,7 +466,7 @@
             const fov = Math.PI / 3;
             const bobY = Math.sin(bob) * (moving ? 4.5 : 0);
 
-            // Enemies (improved sprites)
+            // Enemies – thick outline comic style
             const list = enemies.filter(e => e.alive).map(e => {
                 const dx = e.x - player.x, dy = e.y - player.y;
                 const dist = Math.hypot(dx, dy);
@@ -470,22 +482,27 @@
                 const sx = w/2 + (ang / (fov/2)) * (w/2) - size/2;
                 const sy = (h - size)/2 + bobY;
 
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                ctx.fillRect(sx + size*0.1, sy + size*0.85, size*0.8, size*0.15);
+                // Thick black outline
+                ctx.fillStyle = '#000';
+                ctx.fillRect(sx - 3, sy - 3, size + 6, size + 6);
 
                 // Body
-                ctx.fillStyle = `rgb(180,35,35)`;
-                ctx.fillRect(sx + size*0.15, sy + size*0.25, size*0.7, size*0.6);
+                ctx.fillStyle = '#cc2222';
+                ctx.fillRect(sx + size*0.12, sy + size*0.22, size*0.76, size*0.65);
 
                 // Head
-                ctx.fillStyle = `rgb(200,50,50)`;
-                ctx.fillRect(sx + size*0.25, sy + size*0.08, size*0.5, size*0.28);
+                ctx.fillStyle = '#ee3333';
+                ctx.fillRect(sx + size*0.22, sy + size*0.05, size*0.56, size*0.3);
 
-                // Eyes
-                ctx.fillStyle = '#ff0';
-                ctx.fillRect(sx + size*0.3, sy + size*0.15, size*0.12, size*0.12);
-                ctx.fillRect(sx + size*0.58, sy + size*0.15, size*0.12, size*0.12);
+                // Eyes (yellow Borderlands style)
+                ctx.fillStyle = '#ffe600';
+                ctx.fillRect(sx + size*0.28, sy + size*0.12, size*0.14, size*0.14);
+                ctx.fillRect(sx + size*0.58, sy + size*0.12, size*0.14, size*0.14);
+
+                // Eye pupils
+                ctx.fillStyle = '#000';
+                ctx.fillRect(sx + size*0.32, sy + size*0.16, size*0.06, size*0.06);
+                ctx.fillRect(sx + size*0.62, sy + size*0.16, size*0.06, size*0.06);
             }
 
             // Particles
@@ -498,32 +515,41 @@
                 while (ang < -Math.PI) ang += Math.PI * 2;
                 if (Math.abs(ang) > fov / 1.5) continue;
 
-                const sz = Math.max(2, 7 / dist);
+                const sz = Math.max(2, 8 / dist);
                 const sx = w/2 + (ang / (fov/2)) * (w/2);
                 const sy = h/2 + bobY;
-                ctx.globalAlpha = Math.min(1, p.life / 10);
+
+                // Outlined particle
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(sx, sy, sz + 1.5, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = p.col;
                 ctx.beginPath();
                 ctx.arc(sx, sy, sz, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.globalAlpha = 1;
             }
 
             // Hurt flash
             if (hurt > 0) {
-                ctx.fillStyle = `rgba(255,20,20,${hurt * 0.05})`;
+                ctx.fillStyle = `rgba(255,0,0,${hurt * 0.06})`;
                 ctx.fillRect(0, 0, w, h);
             }
 
-            // Weapon (improved)
+            // Weapon – chunky comic style
             const wr = recoil * 3;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(w*0.36, h*0.73 + bobY*0.3 + wr, w*0.28, h*0.27);
-            ctx.fillStyle = '#2a2a2a';
-            ctx.fillRect(w*0.40, h*0.69 + bobY*0.3 + wr, w*0.20, h*0.07);
-            // Accent line
-            ctx.fillStyle = '#00ffcc';
-            ctx.fillRect(w*0.47, h*0.695 + bobY*0.3 + wr, w*0.06, 2);
+            // Black outline
+            ctx.fillStyle = '#000';
+            ctx.fillRect(w*0.35 - 3, h*0.72 + bobY*0.3 + wr - 3, w*0.30 + 6, h*0.28 + 6);
+            // Body
+            ctx.fillStyle = '#333';
+            ctx.fillRect(w*0.35, h*0.72 + bobY*0.3 + wr, w*0.30, h*0.28);
+            // Top
+            ctx.fillStyle = '#555';
+            ctx.fillRect(w*0.39, h*0.68 + bobY*0.3 + wr, w*0.22, h*0.07);
+            // Accent
+            ctx.fillStyle = '#ffe600';
+            ctx.fillRect(w*0.46, h*0.69 + bobY*0.3 + wr, w*0.08, 3);
         }
 
         function loop() {
